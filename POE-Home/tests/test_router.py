@@ -21,3 +21,13 @@ def test_placeholder_response_mentions_module_name():
     out = router.placeholder_response("osint")
     assert "OSINT" in out.verbal
     assert out.visual is None
+
+
+def test_route_search_words_do_not_trigger_osint():
+    assert router.route("fai una ricerca su Firenze") is None
+    assert router.route("cerca notizie di cybersecurity") is None
+
+
+def test_route_osint_still_triggers_on_explicit_keywords():
+    assert router.route("fai un osint su questo dominio") == "osint"
+    assert router.route("indaga su questo indirizzo") == "osint"

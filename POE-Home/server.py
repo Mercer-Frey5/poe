@@ -6,6 +6,7 @@ POST /speak     -> endpoint HTTP legacy
 
 import asyncio
 import io
+import json
 import platform
 import socket
 import subprocess
@@ -25,6 +26,7 @@ from pydantic import BaseModel
 
 from agents import general_agent, router
 from agents.persona import SYSTEM_PROMPT
+from chat_shim import normalize_messages, parse_tool_calls
 
 _llm_pool = ThreadPoolExecutor(max_workers=1)
 _tts_pool = ThreadPoolExecutor(max_workers=1)
@@ -55,6 +57,10 @@ _tts_sr           = 24000
 _ready            = False
 _rvc_pipeline     = None
 _boot_ts          = time.time()
+
+# Contatori sessione (pannello STATUS).
+_req_count   = 0
+_latency_sum = 0.0
 
 # Moduli di contorno — stato statico finché non sono collegati (fase AGNO).
 # OSINT gira standalone sulla stessa porta 8000: non può convivere con POE-Home.
@@ -204,6 +210,30 @@ def _data_ita(now: datetime) -> str:
             f"{now.strftime('%H:%M')}")
 
 
+_meteo_cache = {"ts": 0.0, "val": "n/d"}
+
+
+def _meteo_breve() -> str:
+    """Riassunto meteo della citta' utente per il pannello STATUS, con cache di
+    10 min: /status viene pollato di continuo, non si puo' chiamare wttr.in ogni
+    volta (rate-limit + 10s di timeout). 'n/d' su errore."""
+    now = time.time()
+    if now - _meteo_cache["ts"] < 600 and _meteo_cache["val"] != "n/d":
+        return _meteo_cache["val"]
+    val = "n/d"
+    try:
+        from agents.tools import POE_CITY, get_weather
+        raw = get_weather(POE_CITY)
+        if not raw.startswith("Errore"):
+            d = json.loads(raw)
+            val = f"{d['temperatura_c']}°C, {d['descrizione']}"
+    except Exception:
+        val = "n/d"
+    _meteo_cache["ts"] = now
+    _meteo_cache["val"] = val
+    return val
+
+
 def _get_status() -> dict:
     comp = {
         "llm": "ok" if _llm_model is not None else "non caricato",
@@ -211,19 +241,57 @@ def _get_status() -> dict:
         "rvc": "ok" if _rvc_pipeline is not None else "fermo",
     }
     vm = psutil.virtual_memory()
+    try:
+        from agents.tools import POE_CITY
+    except Exception:
+        POE_CITY = "n/d"
+    try:
+        from agents import general_agent
+        ultimo_tool = general_agent.last_tool_used
+    except Exception:
+        ultimo_tool = "-"
+    try:
+        cpu_pct = round(psutil.cpu_percent(interval=None))
+    except Exception:
+        cpu_pct = None
+    try:
+        disco_gb = round(psutil.disk_usage("/").free / 2**30, 1)
+    except Exception:
+        disco_gb = None
+    lat_media = round(_latency_sum / _req_count, 1) if _req_count else 0.0
     return {
         "poe": {
             "stato": "operativo" if all(v == "ok" for v in comp.values()) else "degradato",
             "uptime": _uptime_str(),
             "componenti": comp,
         },
+        "posizione": {
+            "citta": POE_CITY,
+            "meteo": _meteo_breve(),
+        },
         "sistema": {
             "data": _data_ita(datetime.now()),
             "device": _DEVICE,
             "ram_libera_gb": round(vm.available / 2**30, 1),
+            "cpu_pct": cpu_pct,
+            "disco_libero_gb": disco_gb,
             "batteria": _battery(),
             "rete": "online" if _net_online() else "offline",
         },
+        "modello": {
+            "nome": LLM_MODEL.split("/")[-1],
+            "prompt_cache_tokens": len(_prefix_ids) if _prefix_ids is not None else 0,
+            "richieste": _req_count,
+            "latenza_media_s": lat_media,
+            "ultimo_tool": ultimo_tool,
+        },
+        "tools": [
+            {"nome": "meteo", "stato": "ok"},
+            {"nome": "web search", "stato": "ok"},
+            {"nome": "notizie", "stato": "ok"},
+            {"nome": "calcolatrice", "stato": "ok"},
+            {"nome": "stato sistema", "stato": "ok"},
+        ],
         "moduli": MODULES,
     }
 
@@ -361,15 +429,20 @@ def _get_llm_response(user_text: str, on_token=None) -> str:
     return _trim_to_sentence(full.strip())
 
 
-def _get_chat_response(messages: list[dict], max_tokens: int = 300) -> str:
+def _get_chat_response(messages: list[dict], tools: list[dict] | None = None,
+                       max_tokens: int = 300) -> str:
     """Risposta grezza per lo shim /v1/chat/completions: nessun context block,
-    nessun trim a frase (l'output e' JSON, non prosa libera)."""
+    nessun trim a frase. Con tools il template include le definizioni e il
+    cache-prefix non matcha -> generazione senza prompt cache (accettato)."""
     from mlx_lm import stream_generate
 
+    template_kwargs = {"tokenize": False, "add_generation_prompt": True,
+                       "enable_thinking": False}
+    if tools:
+        template_kwargs["tools"] = tools
+
     full_ids = _llm_tok.encode(
-        _llm_tok.apply_chat_template(
-            messages, tokenize=False, add_generation_prompt=True, enable_thinking=False,
-        )
+        _llm_tok.apply_chat_template(messages, **template_kwargs)
     )
     prompt, use_cache = full_ids, False
     if _prompt_cache is not None and full_ids[:len(_prefix_ids)] == _prefix_ids:
@@ -431,14 +504,17 @@ def run_rvc(input_wav: str, out_wav: str) -> str:
 
 @app.websocket("/ws/speak")
 async def ws_speak(ws: WebSocket):
+    global _req_count, _latency_sum
     await ws.accept()
     try:
         data = await ws.receive_json()
         user_text = data.get("text", "")
+        mode = data.get("mode", "voice")
         loop = asyncio.get_running_loop()
         t0 = time.time()
 
         module = router.route(user_text)
+        print(f"[REQ] {user_text!r} -> {module or 'general'}")
         if module:
             result = router.placeholder_response(module)
         else:
@@ -446,7 +522,20 @@ async def ws_speak(ws: WebSocket):
 
         llm_text = result.verbal
         t1 = time.time()
+        _req_count += 1
+        _latency_sum += t1 - t0
         print(f"[TIME] LLM: {t1-t0:.1f}s  '{llm_text[:70]}'")
+
+        visual_content = result.visual.model_dump() if result.visual else None
+
+        # Input scritto: risposta solo testo, niente TTS/RVC/audio.
+        if mode == "text":
+            print(f"[RESP] solo-testo({len(llm_text)}ch): {llm_text!r}")
+            await ws.send_json({"type": "text", "content": llm_text})
+            await ws.send_json({"type": "visual", "content": visual_content})
+            await ws.send_json({"type": "done"})
+            await ws.close()
+            return
 
         tts_bytes = await loop.run_in_executor(_tts_pool, _tts_synth, llm_text)
         t2 = time.time()
@@ -463,11 +552,11 @@ async def ws_speak(ws: WebSocket):
 
         audio_bytes = Path(rvc_out).read_bytes()
 
+        print(f"[RESP] verbal({len(llm_text)}ch): {llm_text!r}")
+        print(f"[RESP] visual: {result.visual.type if result.visual else 'null'}"
+              f" | audio: {len(audio_bytes)//1024}KB")
         await ws.send_json({"type": "text", "content": llm_text})
-        await ws.send_json({
-            "type": "visual",
-            "content": result.visual.model_dump() if result.visual else None,
-        })
+        await ws.send_json({"type": "visual", "content": visual_content})
         await ws.send_bytes(audio_bytes)
         await ws.send_json({"type": "done"})
         await ws.close()
@@ -509,29 +598,57 @@ async def speak(req: SpeakRequest):
 
 # ── Shim OpenAI-compatibile per AGNO (loopback, in-process) ─────────────────
 
+class ToolCallFunction(BaseModel):
+    name: str
+    arguments: str  # JSON string, formato wire OpenAI
+
+
+class ToolCall(BaseModel):
+    id: str
+    type: str = "function"
+    function: ToolCallFunction
+
+
 class ChatMessage(BaseModel):
     role: str
-    content: str
+    content: str | None = None
+    tool_calls: list[ToolCall] | None = None
+    tool_call_id: str | None = None
+    name: str | None = None
 
 
 class ChatCompletionRequest(BaseModel):
     model: str
     messages: list[ChatMessage]
+    tools: list[dict] | None = None
+    tool_choice: str | dict | None = None
 
 
 @app.post("/v1/chat/completions")
 async def chat_completions(req: ChatCompletionRequest):
     loop = asyncio.get_running_loop()
-    msgs = [m.model_dump() for m in req.messages]
-    content = await loop.run_in_executor(_llm_pool, _get_chat_response, msgs)
+    msgs = normalize_messages([m.model_dump() for m in req.messages])
+    t0 = time.time()
+    raw = await loop.run_in_executor(
+        _llm_pool, _get_chat_response, msgs, req.tools
+    )
+    content, tool_calls = parse_tool_calls(raw)
+    if tool_calls:
+        message = {"role": "assistant", "content": content, "tool_calls": tool_calls}
+        finish_reason = "tool_calls"
+    else:
+        message = {"role": "assistant", "content": raw}
+        finish_reason = "stop"
+    print(f"[LOOP] msgs={len(msgs)} tools={len(req.tools or [])} "
+          f"-> {finish_reason} in {time.time()-t0:.1f}s | out: {raw[:120]!r}")
     return {
         "id": "chatcmpl-poe",
         "object": "chat.completion",
         "model": req.model,
         "choices": [{
             "index": 0,
-            "message": {"role": "assistant", "content": content},
-            "finish_reason": "stop",
+            "message": message,
+            "finish_reason": finish_reason,
         }],
     }
 

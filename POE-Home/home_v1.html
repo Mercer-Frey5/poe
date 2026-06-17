@@ -70,22 +70,41 @@ body.speaking #pl{animation:glow-speaking 1s ease-in-out infinite;}
 .pb::after{content:"_";animation:blink 1.1s steps(1) infinite;}
 .pstatus{position:fixed;top:calc(50% + 175px);left:50%;transform:translateX(-50%);font-size:.68rem;color:var(--tm);letter-spacing:.08em;font-style:italic;z-index:3;white-space:nowrap;transition:color .3s;}
 body.speaking .pstatus{color:var(--amber);}
+/* Trascrizione voce: ultima frase, clampata (no overflow), auto-sparisce dopo qualche minuto */
+#vt{position:fixed;top:calc(50% + 200px);left:50%;transform:translateX(-50%);width:min(620px,86vw);z-index:3;display:flex;flex-direction:column;gap:.4rem;opacity:0;transition:opacity .6s;pointer-events:none;text-align:center;}
+#vt.show{opacity:1;}
+#vtu{font-size:.67rem;color:rgba(255,255,251,.5);font-style:italic;letter-spacing:.04em;}
+#vtp{font-size:.85rem;color:var(--amber);line-height:1.55;text-shadow:0 0 10px rgba(250,140,22,.25);display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden;}
 
 .cb{position:fixed;bottom:1.4rem;right:1.4rem;z-index:20;font-family:var(--fm);font-size:.65rem;color:var(--tm);border:1px solid var(--bd);padding:.28rem .7rem;border-radius:4px;cursor:pointer;transition:all .15s;background:rgba(26,24,20,.9);backdrop-filter:blur(4px);}
 .cb:hover{color:var(--amber);border-color:var(--amber);}
 
 /* TEXT SCREEN */
-#ts{position:fixed;inset:0;display:flex;flex-direction:column;opacity:0;pointer-events:none;transition:opacity .45s;z-index:10;}
-#ts.on{opacity:1;pointer-events:all;}
+/* Chat: pannello centrale in Home (default) <-> fullscreen classico (.full) */
+#ts{position:fixed;top:50%;left:50%;transform:translate(-50%,-46%) scale(.97);width:min(680px,92vw);height:min(74vh,720px);display:flex;flex-direction:column;opacity:0;pointer-events:none;z-index:21;overflow:hidden;
+  background:linear-gradient(135deg,rgba(30,27,22,.975),rgba(20,18,15,.965));backdrop-filter:blur(16px);border:1px solid var(--bds);border-radius:16px;
+  box-shadow:0 0 0 1px rgba(250,140,22,.1),0 30px 80px rgba(0,0,0,.6),0 0 70px rgba(250,140,22,.1);
+  transition:opacity .4s cubic-bezier(.4,0,.2,1),transform .4s cubic-bezier(.4,0,.2,1),width .45s cubic-bezier(.4,0,.2,1),height .45s cubic-bezier(.4,0,.2,1),border-radius .45s cubic-bezier(.4,0,.2,1);}
+#ts.on{opacity:1;pointer-events:all;transform:translate(-50%,-50%) scale(1);}
+#ts.full{top:0;left:0;width:100vw;height:100vh;border-radius:0;border-color:transparent;transform:translate(0,0);box-shadow:none;}
+/* backdrop dietro al pannello chat */
+#chatBackdrop{position:fixed;inset:0;z-index:20;background:rgba(10,9,7,.5);opacity:0;pointer-events:none;transition:opacity .4s;}
+body.chat-open #chatBackdrop{opacity:1;pointer-events:all;}
+body.chat-full #chatBackdrop{opacity:0;pointer-events:none;}
+body.chat-full #vs{opacity:0;pointer-events:none;}
+body.chat-open .cb,body.chat-full .cb{opacity:0;pointer-events:none;}
 .th{display:flex;align-items:center;justify-content:space-between;padding:.72rem 1.4rem;border-bottom:1px solid var(--bd);background:rgba(26,24,20,.97);backdrop-filter:blur(8px);flex-shrink:0;}
 .tb{display:flex;align-items:center;gap:.65rem;}
-.tl{width:38px;height:38px;object-fit:contain;border-radius:50%;filter:drop-shadow(0 0 5px rgba(250,140,22,.45));cursor:pointer;}
+.tl{width:52px;height:52px;object-fit:contain;border-radius:50%;filter:drop-shadow(0 0 6px rgba(250,140,22,.5));cursor:pointer;}
 .tl:hover{filter:drop-shadow(0 0 9px rgba(250,140,22,.75));}
 .tn{font-family:var(--fb);font-size:1rem;font-weight:900;color:var(--amber);letter-spacing:.12em;}
 .tn::after{content:"_";animation:blink 1.1s steps(1) infinite;}
 .sd{width:6px;height:6px;border-radius:50%;background:#52c41a;box-shadow:0 0 6px rgba(82,196,26,.6);animation:dot-pulse 2.5s ease-in-out infinite;display:inline-block;margin-right:.4rem;}
 .bv{font-family:var(--fm);font-size:.65rem;color:var(--tm);border:1px solid var(--bd);padding:.24rem .65rem;border-radius:4px;cursor:pointer;transition:all .15s;background:transparent;}
 .bv:hover{color:var(--amber);border-color:var(--amber);}
+.th-btns{display:flex;align-items:center;gap:.5rem;}
+.bx{font-family:var(--fm);font-size:.65rem;color:var(--tm);border:1px solid var(--bd);padding:.24rem .65rem;border-radius:4px;cursor:pointer;transition:all .15s;background:transparent;}
+.bx:hover{color:var(--amber);border-color:var(--amber);}
 .msgs{flex:1;overflow-y:auto;padding:.9rem 1.4rem;display:flex;flex-direction:column;gap:.5rem;}
 .msgs::-webkit-scrollbar{width:4px;}
 .msgs::-webkit-scrollbar-thumb{background:var(--bds);border-radius:2px;}
@@ -108,7 +127,8 @@ body.speaking .pstatus{color:var(--amber);}
 
 /* Top nav */
 .vnav{position:fixed;top:0;left:0;right:0;z-index:4;display:flex;align-items:center;justify-content:space-between;padding:.65rem 1.5rem;}
-.vnav-brand{font-family:var(--fb);font-size:.78rem;font-weight:700;color:rgba(250,140,22,.45);letter-spacing:.14em;}
+.vnav-brand{font-family:var(--fb);font-size:1.1rem;font-weight:900;color:var(--amber);letter-spacing:.18em;text-shadow:0 0 14px var(--ag);}
+.vnav-brand::after{content:"_";animation:blink 1.1s steps(1) infinite;}
 .vnav-links{display:flex;gap:.2rem;}
 .vnav-link{font-family:var(--fm);font-size:.64rem;color:var(--tm);padding:.2rem .55rem;border:1px solid transparent;border-radius:4px;cursor:pointer;transition:all .18s;background:rgba(26,24,20,.55);backdrop-filter:blur(4px);letter-spacing:.04em;}
 .vnav-link:hover{color:var(--amber);border-color:var(--bds);}
@@ -127,16 +147,32 @@ body.speaking .pstatus{color:var(--amber);}
 .st-row .k{color:var(--tm);white-space:nowrap;}
 .st-row .v{text-align:right;}
 
-/* Visual output panel (dual output: AGNO modules) */
-#visualPanel{position:fixed;bottom:1.5rem;left:1.5rem;max-width:380px;max-height:40vh;overflow:auto;z-index:20;background:rgba(26,24,20,.94);backdrop-filter:blur(8px);border:1px solid var(--bds);border-radius:8px;padding:.8rem 1rem;display:none;animation:fadein .25s ease;}
-#visualPanel.show{display:block;}
-#visualPanel pre{margin:0;font-size:.6rem;color:var(--ts);white-space:pre-wrap;word-break:break-word;}
+/* ── Visual HUD laterale (Jarvis-style, entra da destra) ───────────────── */
+@keyframes hud-in{from{opacity:0;transform:translate(44px,-50%)}to{opacity:1;transform:translate(0,-50%)}}
+@keyframes hud-card{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes hud-scan{0%{top:-14%}100%{top:114%}}
+#hud{position:fixed;top:50%;right:2.5vw;transform:translateY(-50%);width:min(420px,40vw);max-height:80vh;z-index:20;
+  background:linear-gradient(135deg,rgba(30,27,22,.96),rgba(22,20,17,.94));backdrop-filter:blur(14px);
+  border:1px solid var(--bds);border-radius:14px;display:none;overflow:hidden;
+  box-shadow:0 0 0 1px rgba(250,140,22,.1),0 24px 70px rgba(0,0,0,.55),0 0 60px rgba(250,140,22,.1);}
+#hud.show{display:block;animation:hud-in .5s cubic-bezier(.4,0,.2,1);}
+#hud::before{content:"";position:absolute;left:0;right:0;height:16%;pointer-events:none;z-index:1;
+  background:linear-gradient(180deg,rgba(250,140,22,.15),transparent);animation:hud-scan 2.2s ease-in-out 2;}
+.hud-head{display:flex;align-items:center;justify-content:space-between;padding:.8rem 1rem;border-bottom:1px solid var(--bd);background:rgba(250,140,22,.05);position:relative;z-index:2;}
+.hud-title{font-family:var(--fb);font-weight:700;font-size:.6rem;letter-spacing:.18em;color:var(--amber);}
+.hud-q{font-size:.58rem;color:var(--tm);margin-top:.2rem;letter-spacing:.03em;}
+.hud-close{background:none;border:1px solid var(--bds);color:var(--tm);width:22px;height:22px;border-radius:5px;cursor:pointer;font-size:.85rem;line-height:1;flex-shrink:0;}
+.hud-close:hover{color:var(--amber);border-color:var(--amber);}
+.hud-body{padding:.5rem .6rem .9rem;overflow-y:auto;max-height:calc(80vh - 52px);position:relative;z-index:2;}
+.hud-body .vres{padding:.65rem .7rem;margin:.3rem .15rem;border-left:2px solid rgba(250,140,22,.3);border-radius:0 8px 8px 0;background:rgba(250,140,22,.03);opacity:0;animation:hud-card .45s cubic-bezier(.4,0,.2,1) forwards;}
+.hud-body .vres:hover{background:rgba(250,140,22,.08);border-left-color:var(--amber);}
+.hud-body .vres a{color:#ffb454;font-size:.78rem;font-weight:500;text-decoration:none;display:block;line-height:1.3;}
+.hud-body .vres a:hover{text-decoration:underline;}
+.hud-body .vres .meta{font-size:.55rem;color:var(--amber-d);margin-top:.3rem;letter-spacing:.05em;text-transform:uppercase;}
+.hud-body .vres p{font-size:.68rem;color:var(--ts);margin-top:.28rem;line-height:1.45;opacity:.85;}
+.hud-body pre{margin:0;font-size:.6rem;color:var(--ts);white-space:pre-wrap;word-break:break-word;}
 
 /* Voice transcript panel */
-#vt{position:fixed;top:calc(50% + 205px);left:50%;transform:translateX(-50%);width:min(520px,82vw);z-index:3;display:flex;flex-direction:column;gap:.45rem;opacity:0;transition:opacity .5s;pointer-events:none;text-align:center;}
-#vt.show{opacity:1;}
-#vtu{font-size:.67rem;color:var(--tm);font-style:italic;letter-spacing:.04em;}
-#vtp{font-size:.85rem;color:var(--amber);line-height:1.6;text-shadow:0 0 10px rgba(250,140,22,.25);min-height:1.2em;}
 </style>
 </head>
 <body>
@@ -169,7 +205,10 @@ body.speaking .pstatus{color:var(--amber);}
   <!-- Status panel -->
   <div id="stPanel">
     <div class="st-h">POE</div><div id="stPoe"></div>
+    <div class="st-h">POSIZIONE</div><div id="stPos"></div>
     <div class="st-h">SISTEMA</div><div id="stSys"></div>
+    <div class="st-h">MODELLO</div><div id="stModel"></div>
+    <div class="st-h">TOOLS</div><div id="stTools"></div>
     <div class="st-h">MODULI</div><div id="stMod"></div>
   </div>
   <canvas id="vc"></canvas>
@@ -178,17 +217,19 @@ body.speaking .pstatus{color:var(--amber);}
   <div class="ring r1"></div>
   <div class="ring r2"></div>
   <img id="pl" src="/logo" alt="POE" onclick="toggleVoice()">
-  <div class="pb">POE</div>
-  <p class="pstatus" id="pst">Clicca per parlare</p>
-  <!-- Voice conversation transcript -->
-  <div id="vt">
-    <div id="vtu"></div>
-    <div id="vtp"></div>
+  <p class="pstatus" id="pst"></p>
+  <div id="vt"><div id="vtu"></div><div id="vtp"></div></div>
+  <div id="hud">
+    <div class="hud-head">
+      <div><div class="hud-title">RISULTATI</div><div class="hud-q" id="hudQ"></div></div>
+      <button class="hud-close" onclick="closeHud()">&times;</button>
+    </div>
+    <div class="hud-body" id="hudBody"></div>
   </div>
-  <div id="visualPanel"><pre id="visualContent"></pre></div>
   <button class="cb" onclick="showText()">&#9998; scrivi</button>
 </div>
 
+<div id="chatBackdrop" onclick="showVoice()"></div>
 <div id="ts">
   <div class="th">
     <div class="tb">
@@ -196,7 +237,10 @@ body.speaking .pstatus{color:var(--amber);}
       <img class="tl" src="/logo" alt="POE" onclick="showVoice()">
       <span class="tn">POE</span>
     </div>
-    <button class="bv" onclick="showVoice()">&#127908; voce</button>
+    <div class="th-btns">
+      <button class="bx" id="expandBtn" onclick="toggleFull()">&#9974; espandi</button>
+      <button class="bv" onclick="showVoice()">&#127908; voce</button>
+    </div>
   </div>
   <div class="msgs" id="msgs">
     <div class="msg mp">Sono POE. Come posso aiutarti oggi, Efrem?</div>
@@ -313,30 +357,37 @@ loop();
 /* Mode */
 var voiceTimer = null;
 function toggleVoice() {
-  speaking = !speaking;
-  document.body.classList.toggle('speaking', speaking);
-  var pst = document.getElementById('pst');
-  if (speaking) {
-    pst.textContent = 'In ascolto…';
-    voiceTimer = setTimeout(function() {
-      speaking = false;
-      document.body.classList.remove('speaking');
-      pst.textContent = 'Clicca per parlare';
-    }, 5000);
-  } else {
-    if (voiceTimer) { clearTimeout(voiceTimer); voiceTimer = null; }
-    pst.textContent = 'Clicca per parlare';
+  /* click sul logo = avvia/ferma ascolto reale (startCommandCapture fa il beep) */
+  if (speaking || _cmdRec) {
+    if (_cmdRec) { try { _cmdRec.abort(); } catch(e){} _cmdRec = null; }
+    speaking = false; document.body.classList.remove('speaking');
+    _setPst('');
+    startWakeListener();
+    return;
   }
+  if (_wakeRec) { try { _wakeRec.stop(); } catch(e){} }
+  startCommandCapture();
 }
 function showText() {
-  document.getElementById('vs').classList.add('hidden');
   document.getElementById('ts').classList.add('on');
-  vizOn = false;
+  document.body.classList.add('chat-open');
   if (speaking) { speaking = false; document.body.classList.remove('speaking'); }
+  setTimeout(function(){ var ci=document.getElementById('ci'); if(ci) ci.focus(); }, 380);
+}
+function toggleFull() {
+  var ts = document.getElementById('ts');
+  var full = ts.classList.toggle('full');
+  document.body.classList.toggle('chat-full', full);
+  var b = document.getElementById('expandBtn');
+  if (b) b.innerHTML = full ? '&#9696; comprimi' : '&#9974; espandi';
 }
 function showVoice() {
-  document.getElementById('ts').classList.remove('on');
+  var ts = document.getElementById('ts');
+  ts.classList.remove('on'); ts.classList.remove('full');
+  document.body.classList.remove('chat-open'); document.body.classList.remove('chat-full');
   document.getElementById('vs').classList.remove('hidden');
+  var b = document.getElementById('expandBtn');
+  if (b) b.innerHTML = '&#9974; espandi';
   vizOn = true;
   setTimeout(cacheLogoPos, 30);
 }
@@ -405,17 +456,25 @@ function send(){
   _doSpeak(t);
 }
 
+function _vtScheduleClear(){
+  if (window._vtClearTimer) clearTimeout(window._vtClearTimer);
+  window._vtClearTimer = setTimeout(function(){
+    var vt=document.getElementById("vt"); if(vt) vt.classList.remove("show");
+    setTimeout(function(){ var u=document.getElementById("vtu"),pp=document.getElementById("vtp"); if(u)u.textContent=""; if(pp)pp.textContent=""; },650);
+  }, 150000); /* 2.5 min -> home torna pulita */
+}
+function _vtShowUser(t){
+  if (window._vtClearTimer) { clearTimeout(window._vtClearTimer); window._vtClearTimer=null; }
+  document.getElementById("vtu").textContent = t;
+  document.getElementById("vtp").textContent = "";
+  document.getElementById("vt").classList.add("show");
+}
 function _doSpeak(t){
   var onVoice = !document.getElementById("ts").classList.contains("on");
+  var mode = onVoice ? "voice" : "text";
 
-  if (onVoice) {
-    document.getElementById("vtu").textContent = t;
-    document.getElementById("vtp").textContent = "";
-    document.getElementById("vt").classList.add("show");
-    _setPst("Elaborazione...");
-  } else {
-    addMsg(t, "mu");
-  }
+  addMsg(t, "mu");                       // storico chat (sempre)
+  if (onVoice) { _vtShowUser(t); _setPst("Elaborazione..."); }
 
   if (_wakeRec) { try { _wakeRec.stop(); } catch(e) {} }
 
@@ -424,7 +483,7 @@ function _doSpeak(t){
   var _silSrc = ctx.createBufferSource();
   _silSrc.buffer = _sil; _silSrc.connect(ctx.destination); _silSrc.start(0);
 
-  var ind = onVoice ? null : document.getElementById("typing");
+  var ind = document.getElementById("typing");
   if (ind) { ind.classList.add("show"); document.getElementById("msgs").scrollTop = 99999; }
 
   var pendingText = null;
@@ -442,6 +501,13 @@ function _doSpeak(t){
       }
     }
     return liveBubble;
+  }
+
+  function finalizeText(text){
+    if (ind) ind.classList.remove("show");
+    var b = ensureBubble();
+    b.textContent = text;
+    document.getElementById("msgs").scrollTop = 99999;
   }
 
   function startSyncReveal(arrayBuf){
@@ -464,13 +530,9 @@ function _doSpeak(t){
           if (_actxSrc === src) _actxSrc = null;
           bubble.textContent = text;
           speaking = false; document.body.classList.remove("speaking");
-          if (onVoice) {
-            /* modalita' conversazione: riapri il microfono per il follow-up;
-               se resta silenzio, startCommandCapture torna da solo al wake mode */
-            setTimeout(startCommandCapture, 300);
-          } else {
-            startWakeListener();
-          }
+          addMsg(text, "mp");        // storico chat
+          _vtScheduleClear();        // home torna pulita dopo qualche minuto
+          setTimeout(startCommandCapture, 300);
         };
 
         var dur = decoded.duration;
@@ -478,43 +540,46 @@ function _doSpeak(t){
           var elapsed = Math.max(0, ctx.currentTime - startAt);
           var shown = Math.ceil(Math.min(elapsed / dur, 1) * text.length);
           bubble.textContent = text.substring(0, shown);
-          if (!onVoice) document.getElementById("msgs").scrollTop = 99999;
           if (elapsed < dur) requestAnimationFrame(tick);
         }
         requestAnimationFrame(tick);
 
-      }).catch(function(err){
-        bubble.textContent = text;
-        if (!onVoice) addMsg("[Errore resume: " + err + "]", "mp");
-      });
-    }, function(err){
-      bubble.textContent = text || "";
-      if (!onVoice) addMsg("[Errore decode: " + err + "]", "mp");
-    });
+      }).catch(function(err){ bubble.textContent = text; });
+    }, function(err){ bubble.textContent = text || ""; });
   }
 
   var ws = new WebSocket("ws://127.0.0.1:8000/ws/speak");
   ws.binaryType = "arraybuffer";
 
-  ws.onopen = function(){ ws.send(JSON.stringify({text: t})); };
+  ws.onopen = function(){ ws.send(JSON.stringify({text: t, mode: mode})); };
 
   ws.onmessage = function(e){
     if (typeof e.data === "string") {
       var msg = JSON.parse(e.data);
       if (msg.type === "token") {
-        // testo live disabilitato: la trascrizione appare solo in sync con l'audio
         if (onVoice) _setPst("POE sta pensando...");
       } else if (msg.type === "text") {
         pendingText = msg.content;
         if (onVoice) _setPst("Genero la voce...");
+        else finalizeText(msg.content);   // chat scritta: mostra subito, no audio
       } else if (msg.type === "visual") {
-        var vp = document.getElementById("visualPanel");
         if (msg.content) {
-          document.getElementById("visualContent").textContent = JSON.stringify(msg.content, null, 2);
-          vp.classList.add("show");
+          if (msg.content.type === "search_results") {
+            renderSearchResults(msg.content.data);
+          } else {
+            var body = document.getElementById("hudBody");
+            body.textContent = "";
+            document.getElementById("hudQ").textContent = "";
+            var pre = document.createElement("pre");
+            pre.textContent = JSON.stringify(msg.content, null, 2);
+            body.appendChild(pre);
+          }
+          openHud();
         } else {
-          vp.classList.remove("show");
+          closeHud();
         }
+      } else if (msg.type === "done") {
+        if (!onVoice && ind) ind.classList.remove("show");
       }
     } else {
       startSyncReveal(e.data);
@@ -524,11 +589,7 @@ function _doSpeak(t){
   ws.onerror = function(){
     if (!liveBubble && !pendingText) {
       if (ind) ind.classList.remove("show");
-      if (onVoice) {
-        document.getElementById("vtp").textContent = "[Errore connessione]";
-      } else {
-        addMsg("[Errore connessione]", "mp");
-      }
+      addMsg("[Errore connessione]", "mp");
     }
   };
   ws.onclose = function(){};
@@ -574,7 +635,7 @@ function startWakeListener() {
   _wakeRec.interimResults = true;
   _wakeRec.lang = "it-IT";
 
-  _wakeRec.onstart = function() { _setPst("Di' Poe o Ei Poe"); };
+  _wakeRec.onstart = function() { _setPst(""); };
 
   _wakeRec.onresult = function(ev) {
     if (_awake) return;
@@ -642,7 +703,7 @@ function startCommandCapture() {
     var cmd = (_bestFinal || _bestInterim || "").trim();
     _awake = false;
     speaking = false; document.body.classList.remove("speaking");
-    _setPst("Clicca per parlare");
+    _setPst("");
     if (cmd.length > 1) { setTimeout(function(){ _doSpeak(cmd); }, 50); }
     else { startWakeListener(); }
   }
@@ -684,7 +745,7 @@ function startCommandCapture() {
   try { _cmdRec.start(); }
   catch(e) {
     _awake = false;
-    _setPst("Clicca per parlare");
+    _setPst("");
     setTimeout(startWakeListener, 500);
   }
 }
@@ -731,10 +792,59 @@ function pollReady() {
 }
 setTimeout(pollReady, 800);
 
+/* ── HUD laterale (scope globale: il bottone chiudi usa onclick) ────────── */
+function renderSearchResults(data) {
+  var body = document.getElementById("hudBody");
+  body.textContent = "";
+  var q = (data && data.query) || "";
+  document.getElementById("hudQ").textContent = q ? ("\"" + q + "\"") : "";
+  var results = (data && data.results) || [];
+  if (!Array.isArray(results)) {
+    var pre = document.createElement("pre");
+    pre.textContent = String(results);
+    body.appendChild(pre);
+    return;
+  }
+  results.forEach(function (r, i) {
+    var item = document.createElement("div");
+    item.className = "vres";
+    item.style.animationDelay = (0.1 + i * 0.09) + "s";
+    var href = r.href || r.url || "#";
+    var a = document.createElement("a");
+    a.href = /^https?:/i.test(href) ? href : "#";
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.textContent = r.title || "(senza titolo)";
+    item.appendChild(a);
+    var metaTxt = r.source || r.meta || "";
+    if (metaTxt) {
+      var m = document.createElement("div");
+      m.className = "meta";
+      m.textContent = metaTxt;
+      item.appendChild(m);
+    }
+    var p = document.createElement("p");
+    p.textContent = r.body || r.snippet || "";
+    item.appendChild(p);
+    body.appendChild(item);
+  });
+}
+function openHud() {
+  var h = document.getElementById("hud");
+  h.classList.remove("show");
+  void h.offsetWidth;
+  h.classList.add("show");
+  document.body.classList.add("hud-open");
+}
+function closeHud() {
+  document.getElementById("hud").classList.remove("show");
+  document.body.classList.remove("hud-open");
+}
+
 function setSection(el, name) {
   document.querySelectorAll('.vnav-link').forEach(function(a){a.classList.remove('active');});
   el.classList.add('active');
-  document.getElementById('pst').textContent = {osint:'Modalità OSINT — analisi entità', diario:'Modalità Diario — note e osservazioni', analisi:'Modalità Analisi — pattern e correlazioni'}[name] || 'Clicca per parlare';
+  document.getElementById('pst').textContent = {osint:'Modalità OSINT — analisi entità', diario:'Modalità Diario — note e osservazioni', analisi:'Modalità Analisi — pattern e correlazioni'}[name] || '';
 }
 
 /* ── Status panel ───────────────────────────────────────────────────────── */
@@ -758,19 +868,37 @@ function _stRender(d) {
                 _stRow("LLM", comp.llm, _stDotFor(comp.llm)) +
                 _stRow("TTS", comp.tts, _stDotFor(comp.tts)) +
                 _stRow("Voce RVC", comp.rvc, _stDotFor(comp.rvc));
+  var pos = d.posizione || {};
+  var posHtml = _stRow("Citta", pos.citta || "n/d") +
+                _stRow("Meteo", pos.meteo || "n/d");
   var s = d.sistema;
   var sysHtml = _stRow("Data", s.data) +
                 _stRow("Device", s.device) +
                 _stRow("RAM libera", s.ram_libera_gb + " GB") +
+                _stRow("CPU", (s.cpu_pct == null ? "n/d" : s.cpu_pct + " %")) +
+                _stRow("Disco libero", (s.disco_libero_gb == null ? "n/d" : s.disco_libero_gb + " GB")) +
                 _stRow("Batteria", s.batteria) +
                 _stRow("Rete", s.rete, _stDotFor(s.rete));
+  var mdl = d.modello || {};
+  var modelHtml = _stRow("Nome", mdl.nome || "n/d") +
+                  _stRow("Cache prompt", (mdl.prompt_cache_tokens || 0) + " tok") +
+                  _stRow("Richieste", String(mdl.richieste == null ? 0 : mdl.richieste)) +
+                  _stRow("Latenza media", (mdl.latenza_media_s == null ? 0 : mdl.latenza_media_s) + " s") +
+                  _stRow("Ultimo tool", mdl.ultimo_tool || "-");
+  var toolsHtml = "";
+  (d.tools || []).forEach(function(t) {
+    toolsHtml += _stRow(t.nome, t.stato, _stDotFor(t.stato));
+  });
   var modHtml = "";
   d.moduli.forEach(function(m) {
     var cls = m.stato.indexOf("in sviluppo") === 0 ? "" : "warn";
     modHtml += _stRow(m.nome, m.stato, cls);
   });
   document.getElementById("stPoe").innerHTML = poeHtml;
+  document.getElementById("stPos").innerHTML = posHtml;
   document.getElementById("stSys").innerHTML = sysHtml;
+  document.getElementById("stModel").innerHTML = modelHtml;
+  document.getElementById("stTools").innerHTML = toolsHtml;
   document.getElementById("stMod").innerHTML = modHtml;
   // pallino nella nav: verde se tutto ok, ambra se degradato
   document.getElementById("stDot").className = "st-dot " + _stDotFor(d.poe.stato);
