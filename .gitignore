@@ -1,0 +1,57 @@
+# Ambiente
+.venv/
+venv/
+.env
+
+# uv (package manager moderno)
+# Il file uv.lock VA committato (riproducibilità deterministica): non escludere.
+# Cache locale di uv invece sì (vive in ~/.cache/uv di solito, ma se finisce
+# nel progetto per qualche motivo va ignorata).
+.uv-cache/
+
+# Dati (il DB contiene le tue osservazioni!)
+data/*.db
+data/*.db-*
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+*.egg-info/
+.coverage
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Claude
+Claude Project MD/
+.claude/worktrees/
+
+# Artefatti build / test
+dist/
+build/
+htmlcov/
+
+# Modello RVC attivo (mlx_rvc) — poe-ita.index 194MB > limite GitHub 100MB. Solo locale.
+POE-Home/rvc_model/
+
+# Corpus audio voce POE (Altered Carbon, pulito) — 274MB > limite GitHub. Solo locale.
+vocals_mono_native.wav
+
+# Moduli personali / non pubblici — solo locale, fuori dal repo pubblico
+POE-Diario/
+POE-Analisi/
+POE-Altro/
+
+# Materiale interno / non pubblico (repo pubblica)
+.claude/
+docs/superpowers/
+**/docs/superpowers/
+WIN_file/CLAUDE.md
+Report_Progetto_POE.html

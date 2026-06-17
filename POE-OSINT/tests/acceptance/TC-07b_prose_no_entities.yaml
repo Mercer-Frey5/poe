@@ -1,0 +1,26 @@
+# TC-07b — Prosa senza entita
+# Priorita alta. Testo narrativo che non contiene entita OSINT.
+# La pipeline deve restituire zero entita (o al massimo person_name
+# da spaCy, che pero sono fuori scope di questo test specifico).
+
+metadata:
+  id: TC-07b
+  title: "Prosa senza entita riconoscibili"
+  priority: high
+  coverage_tags: [edge_case, no_entities]
+
+input:
+  text: |-
+    Oggi e stata una giornata tranquilla in ufficio. Abbiamo discusso
+    del nuovo progetto per il trimestre e deciso di rimandare la
+    riunione a venerdi prossimo. Il caffe della macchinetta era
+    particolarmente buono stamattina.
+
+    Il tempo fuori era grigio ma non pioveva. Qualcuno ha proposto
+    di andare a pranzo al ristorante nuovo vicino alla stazione.
+
+must_extract:
+  entities: []
+
+must_not_extract:
+  entities: []

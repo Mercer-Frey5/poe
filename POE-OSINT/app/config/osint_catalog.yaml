@@ -1,0 +1,735 @@
+# ═══════════════════════════════════════════════════════════════════
+# POE — Catalogo OSINT
+# ═══════════════════════════════════════════════════════════════════
+#
+# File: app/config/osint_catalog.yaml
+# Versione schema: 0.1 (primo blocco, scope `person_name` + reverse image)
+#
+# Catalogo dichiarativo delle risorse OSINT che POE suggerisce
+# all'Operatore per ogni tipo di entità estratta.
+#
+# Coerenza con i principi del progetto (vedi STATUS.md):
+# - Scope persone-centrico: le risorse e gli esempi sono pensati
+#   prima per indagini su persone, secondariamente per altri tipi
+# - Offline-first: ogni risorsa dichiara il suo requisito di rete.
+#   Le risorse offline hanno priorità implicita
+# - Ridondanza investigativa: le risorse triangolanti sono
+#   esplicitamente collegate via `triangulates_with`
+# - Trasparenza: la classe di autorevolezza della fonte è dichiarata
+#   onestamente
+# - Validazione empirica: ogni voce dichiara `validation_status`
+#
+# Manutenzione (decisione Architettura, 5 maggio 2026):
+# - On-touch: durante l'uso quotidiano, una voce alla volta
+# - Spazzata sistematica: gennaio di ogni anno, revisione voci con
+#   `last_verified` più vecchio di 12 mesi
+#
+# Lingua: descrizioni in italiano, nomi tecnici e URL in lingua
+# originale.
+#
+# Caricamento: al boot del Recognizer/template engine, con loader
+# fail-fast simmetrico a tld_list.yaml e stoplist_person_name.yaml.
+# Fail-fast solo su:
+# - File mancante o malformato
+# - Campi obbligatori mancanti (cerchio 1: id, kind, name,
+#   applies_to.entity_types, validation_status)
+# - Valori che violano i vocabolari controllati definiti sotto
+# Non fail-fast: assenza di campi opzionali. Una voce minimale
+# è valida.
+# ═══════════════════════════════════════════════════════════════════
+
+
+# ───────────────────────────────────────────────────────────────────
+# Vocabolari controllati
+# ───────────────────────────────────────────────────────────────────
+# Pattern ratificato come convenzione di progetto in v0.4: i campi
+# enumerabili usano vocabolari controllati definiti in YAML, mai
+# stringhe libere. Vedi STATUS.md, sezione "Decisioni di schema".
+
+vocabularies:
+
+  entity_types:
+    # Allineato con lo schema dei tipi POE.
+    # Tipi v0.3 attuali (10):
+    - email
+    - url
+    - domain
+    - ipv4
+    - hash_md5
+    - hash_sha256
+    - cve
+    - username
+    - phone
+    - person_name
+    # Tipi v0.4 in arrivo (4):
+    - tax_id
+    - vat_id
+    - social_handle
+    - birth_date
+    # Tipi esplicitamente fuori scope POE (non aggiungere risorse
+    # che si applicano solo a questi): ipv6, asn, mac_address,
+    # bitcoin_address, ethereum_address, threat_actor, malware.
+
+  validation_status:
+    - verified           # Risorsa usata almeno una volta
+                         # dall'Operatore, confermata funzionante
+    - unverified         # Sentita nominare, candidata da provare.
+                         # Marcata chiaramente, non confonde con
+                         # quelle in uso reale
+    - to_revisit         # Era verified, ma all'ultimo uso ha mostrato
+                         # segnali di degradazione. Da rivalidare
+    - dead               # Risorsa morta o irreparabilmente cambiata.
+                         # Tenuta come storia, non proposta all'Operatore
+
+  source_authority:
+    # Classe di autorevolezza della FONTE ESTERNA. Distinto da
+    # Entity.confidence (confidenza dell'entità estratta da POE).
+    # Al dubbio, scendere di un gradino.
+    - official_registry      # Registro pubblico ufficiale
+    - aggregator_curated     # Aggregatore con curation editoriale
+    - aggregator_automated   # Aggregatore automatico (motori di ricerca,
+                             # scraper). Affidabile sul "cosa esisteva",
+                             # non sul significato
+    - crowdsourced           # Dato comunitario non verificato
+    - commercial_variable    # Servizio commerciale con qualità incerta
+                             # nel tier gratuito
+
+  network_requirement:
+    - offline                # Funziona senza rete
+    - online_browser         # Sito web aperto nel browser
+    - online_api             # API REST/GraphQL diretta (uso enricher v0.6+)
+    - hybrid                 # Tool CLI con rete (whois, Sherlock, ecc.)
+
+  privacy_impact:
+    - leak_query             # La query viene inviata a un server terzo
+                             # che vede esattamente cosa cerco
+    - leak_metadata          # Solo metadati (IP, user-agent, timestamp)
+    - none                   # Nessuna traccia esterna
+
+  cost:
+    - free
+    - free_with_account
+    - freemium
+    - paid
+
+  geographic_scope:
+    - it
+    - eu
+    - global
+    - other
+
+  resource_kind:
+    - website
+    - google_dork
+    - cli_tool
+    - api_endpoint           # Riservato per v0.6+
+
+  practical_accuracy:
+    # Efficacia pratica nel restituire risultati pertinenti per lo
+    # scope tipico dell'Operatore italiano. Decisione provvisoria,
+    # da rivalutare se serve scope-awareness più granulare.
+    - high
+    - medium
+    - low
+
+
+# ───────────────────────────────────────────────────────────────────
+# Politica di manutenzione
+# ───────────────────────────────────────────────────────────────────
+
+maintenance_policy:
+  on_touch: true
+  systematic_review_cadence_months: 12
+  systematic_review_target_month: "gennaio"
+
+
+# ───────────────────────────────────────────────────────────────────
+# Soglie di notifica (Semantica B — campi opzionali incompleti)
+# ───────────────────────────────────────────────────────────────────
+# Una voce `verified` è considerata "da rifinire" se uno qualunque
+# dei campi di `completeness_fields` è assente o vuoto.
+# Voci `unverified`, `to_revisit`, `dead` non entrano nel contatore.
+
+notification_thresholds:
+  completeness_fields:
+    - description
+    - source_authority
+    - privacy_impact
+    - cost
+    - operational_notes
+  incomplete_warning_count: 5    # Sopra questa soglia, badge visibile
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Risorse — primo blocco: person_name + reverse image
+# ═══════════════════════════════════════════════════════════════════
+# Convenzione id: kebab-case con prefisso che indica `kind`:
+#   site-* per website
+#   dork-* per google_dork
+#   cli-*  per cli_tool
+
+resources:
+
+  # ═══════════════════════════════════════════════════════════════
+  # MOTORI DI RICERCA (cross-site triangolation)
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: site-google-search
+    kind: website
+    name: Google
+    applies_to:
+      entity_types: [person_name, email, username, social_handle, phone]
+    validation_status: verified
+
+    url: "https://www.google.com/"
+    description: |
+      Motore di ricerca generalista, principale piattaforma per
+      eseguire i dork-template del catalogo. Punto di accesso
+      tipico di ogni indagine su persone.
+    purpose: |
+      Pivot iniziale: data un'entità (nome, email, username), prima
+      passata su Google con o senza dork specifici per misurare
+      l'esposizione pubblica della persona.
+
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+
+    triangulates_with:
+      - site-bing-search
+      - site-duckduckgo-search
+      - site-yandex-search
+
+    operational_notes: |
+      Risultati personalizzati in base a IP, cookie, account loggato.
+      Per indagini è preferibile sessione in incognito o browser
+      dedicato senza login. La ridondanza con altri motori cattura
+      pagine che Google deindicizza per personalizzazione o policy.
+
+    last_verified: "2026-05-14"
+
+
+  - id: site-bing-search
+    kind: website
+    name: Bing
+    applies_to:
+      entity_types: [person_name, email, username, social_handle, phone]
+    validation_status: unverified
+
+    url: "https://www.bing.com/"
+    description: |
+      Motore di ricerca di Microsoft, indice proprio (non un derivato
+      di Google). Triangolatore naturale per ridondanza investigativa.
+    purpose: |
+      Eseguire gli stessi dork di Google su un indice diverso, per
+      catturare pagine indicizzate qui ma non lì.
+
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+
+    triangulates_with:
+      - site-google-search
+      - site-duckduckgo-search
+
+    operational_notes: |
+      Da provare sistematicamente quando un dork su Google dà
+      risultati zero o pochi. Operatori avanzati supportati con
+      sintassi quasi identica a Google.
+
+
+  - id: site-duckduckgo-search
+    kind: website
+    name: DuckDuckGo
+    applies_to:
+      entity_types: [person_name, email, username, social_handle, phone]
+    validation_status: unverified
+
+    url: "https://duckduckgo.com/"
+    description: |
+      Meta-motore privacy-friendly che aggrega Bing e fonti proprie,
+      senza personalizzare i risultati per utente.
+    purpose: |
+      Vista "neutra" sui risultati: stessi risultati per tutti gli
+      Operatori, utile per riproducibilità di un'indagine.
+
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: leak_metadata
+    cost: free
+    geographic_scope: global
+    practical_accuracy: medium
+
+    triangulates_with:
+      - site-google-search
+      - site-bing-search
+
+    operational_notes: |
+      Privacy_impact più mite degli altri motori (DuckDuckGo dichiara
+      no-tracking). Indice tecnico è derivato da Bing, quindi la
+      triangolazione vera è con Google e Yandex, non con Bing stesso.
+
+
+  - id: site-yandex-search
+    kind: website
+    name: Yandex
+    applies_to:
+      entity_types: [person_name, username, social_handle]
+    validation_status: unverified
+
+    url: "https://yandex.com/"
+    description: |
+      Motore di ricerca russo. Indicizzazione molto diversa dagli
+      altri tre, copertura ottima dell'area est-Europa e di pagine
+      che Google deindicizza.
+    purpose: |
+      Ultima triangolazione, da usare quando i tre motori principali
+      non hanno restituito quanto cercato, o quando l'indagine
+      riguarda persone con tracce in area russa/est-europea.
+
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: low
+
+    triangulates_with:
+      - site-google-search
+
+    operational_notes: |
+      Sovranità del dato: la query va a server russi. Per indagini
+      personali a basso rischio è accettabile; per indagini sensibili
+      va pesato. Practical_accuracy bassa per scope italiano, sale
+      a high per scope russo/est-europeo.
+
+
+  # ═══════════════════════════════════════════════════════════════
+  # GOOGLE DORK PER PERSON_NAME
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: dork-name-with-discriminator-platform
+    kind: google_dork
+    name: "Nome quotato + discriminatore + piattaforma"
+    applies_to:
+      entity_types: [person_name]
+    validation_status: verified
+
+    query_template: |
+      "{value}" "{discriminator}" site:{platform}
+    description: |
+      Cerca il nome della persona insieme a un attributo distintivo
+      (azienda, città, scuola), restringendo a una piattaforma
+      sociale o aggregatore specifico. Il template ha tre placeholder.
+    purpose: |
+      Ridurre omonimie quando il nome è comune. Triangolare nome +
+      attributo noto su piattaforma con alta densità di pubblicazione
+      identitaria (LinkedIn, Facebook, Instagram, archivi aziendali).
+
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+
+    triangulates_with:
+      - dork-name-with-location
+      - dork-name-on-linkedin
+
+    operational_notes: |
+      Pattern derivato dall'idioma reale dell'Operatore. Quotare
+      ENTRAMBI i termini ("Mario Rossi" "Acme") riduce di molto i
+      falsi positivi rispetto a quotare solo il discriminatore.
+      Placeholder attesi:
+        {value}         → nome dell'entità person_name
+        {discriminator} → attributo distintivo (organization,
+                          location, scuola, ecc.)
+        {platform}      → linkedin.com/in, facebook.com, ecc.
+
+    last_verified: "2026-05-14"
+
+
+  - id: dork-name-with-location
+    kind: google_dork
+    name: "Nome quotato + città/regione"
+    applies_to:
+      entity_types: [person_name]
+    validation_status: verified
+
+    query_template: |
+      "{value}" "{location}"
+    description: |
+      Cerca il nome insieme a una località geografica nota o
+      sospettata. Senza vincolo di piattaforma, lascia a Google
+      l'indicizzazione di archivi locali, giornali regionali, blog.
+    purpose: |
+      Rete a strascico geografica per ridurre omonimie. Funziona
+      bene quando il nome è italiano comune e l'indagine è italiana.
+
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: it
+    practical_accuracy: medium
+
+    triangulates_with:
+      - dork-name-with-discriminator-platform
+      - site-paginebianche-it
+
+    operational_notes: |
+      Per nomi rari basta il nome quotato senza località. Per cognomi
+      molto comuni (Rossi, Bianchi, Esposito) serve discriminatore
+      più specifico (via, frazione, codice postale tra virgolette).
+
+    last_verified: "2026-05-14"
+
+
+  - id: dork-name-filetype-pdf
+    kind: google_dork
+    name: "Nome quotato in documenti pubblici"
+    applies_to:
+      entity_types: [person_name]
+    validation_status: verified
+
+    query_template: |
+      "{value}" filetype:pdf
+    description: |
+      Cerca il nome dentro documenti PDF pubblici indicizzati da
+      Google. Cattura liste partecipanti, atti, comunicati,
+      presentazioni, articoli accademici, bilanci.
+    purpose: |
+      Far emergere tracce della persona in contesti istituzionali
+      o aziendali che pubblicano documenti, spesso dimenticati.
+
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+
+    triangulates_with: []
+
+    operational_notes: |
+      filetype:pdf è uno degli operatori Google più stabili nel
+      tempo (funziona dal 2003 ad oggi). Variante allargata:
+      filetype:pdf OR filetype:doc OR filetype:docx — ma diluisce,
+      meglio partire da pdf-only. Per nomi comuni aggiungere un
+      discriminatore quotato (es. città o azienda) prima del filetype.
+
+    last_verified: "2026-05-14"
+
+
+  - id: dork-name-on-linkedin
+    kind: google_dork
+    name: "Nome quotato su LinkedIn (scorciatoia)"
+    applies_to:
+      entity_types: [person_name]
+    validation_status: verified
+
+    query_template: |
+      "{value}" site:linkedin.com/in
+    description: |
+      Caso particolare di ricerca site-restricted su LinkedIn. Senza
+      discriminatore aggiuntivo, mostra tutti i profili LinkedIn con
+      quel nome.
+    purpose: |
+      Pivot rapido per misurare l'identità professionale pubblicata.
+      Spesso la prima query da lanciare quando si ha solo un nome.
+
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+
+    triangulates_with:
+      - dork-name-with-discriminator-platform
+
+    operational_notes: |
+      LinkedIn limita la visualizzazione dei profili a utenti non
+      loggati. Cliccando un risultato si vede solo il preview.
+      Per accesso completo, login richiesto (e visibile al target
+      tramite "chi ha visto il tuo profilo" se non in modalità
+      privata). Operatore deve decidere caso per caso se accettare
+      la traccia.
+
+    last_verified: "2026-05-14"
+
+
+  # ═══════════════════════════════════════════════════════════════
+  # REVERSE IMAGE SEARCH
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: site-google-lens
+    kind: website
+    name: Google Lens
+    applies_to:
+      entity_types: [person_name]
+    validation_status: verified
+
+    url: "https://lens.google.com/"
+    description: |
+      Reverse image search di Google. Eccellente per riconoscimento
+      di oggetti, luoghi, prodotti, scene. Per face matching limitato
+      per policy (Google non identifica volti).
+    purpose: |
+      Punto d'accesso più immediato per reverse image. Identificare
+      oggetti, location, indizi visivi in una foto associata alla
+      persona. Per identificare la persona stessa dal volto, usare
+      Yandex Images o tool dedicati (PimEyes, FaceCheck.ID).
+
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: medium
+
+    triangulates_with:
+      - site-yandex-images
+      - site-tineye
+
+    operational_notes: |
+      Accessibile da desktop via lens.google.com (drag-and-drop o
+      upload), nativo su mobile. Per volti restituisce "immagini
+      simili" stilisticamente, non identificazioni.
+
+    last_verified: "2026-05-14"
+
+
+  - id: site-yandex-images
+    kind: website
+    name: Yandex Images
+    applies_to:
+      entity_types: [person_name]
+    validation_status: verified
+
+    url: "https://yandex.com/images/"
+    description: |
+      Reverse image di Yandex. Storicamente il più efficace per
+      face matching reale in contesti OSINT, perché ha indicizzazione
+      meno filtrata dal punto di vista privacy occidentale.
+    purpose: |
+      Identificare una persona partendo dal volto. Quando Google
+      Lens dice "immagini simili" generiche, Yandex spesso restituisce
+      la persona reale o profili associati.
+
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+
+    triangulates_with:
+      - site-google-lens
+      - site-tineye
+
+    operational_notes: |
+      Sovranità del dato: l'immagine viene caricata su server russi.
+      Per ricerche personali a basso rischio è accettabile; per
+      indagini sensibili va pesato. La capacità di face matching è
+      reale ma non infallibile — combinare con altri tool per
+      conferma.
+
+    last_verified: "2026-05-14"
+
+
+  - id: site-tineye
+    kind: website
+    name: TinEye
+    applies_to:
+      entity_types: [person_name]
+    validation_status: verified
+
+    url: "https://tineye.com/"
+    description: |
+      Reverse image specializzato in match esatto o quasi-esatto.
+      Non fa face matching: trova istanze identiche della stessa
+      immagine sul web.
+    purpose: |
+      Smascherare profili che usano foto rubate (catfishing, fake
+      account), tracciare immagini stock spacciate per personali,
+      verificare se una foto profilo è davvero originale del soggetto.
+
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: freemium
+    geographic_scope: global
+    practical_accuracy: high
+
+    triangulates_with:
+      - site-google-lens
+      - site-yandex-images
+
+    operational_notes: |
+      Tier gratuito sufficiente per uso investigativo personale.
+      API e bulk a pagamento. Funzione complementare ai tool che
+      fanno face matching: risponde a "dove altro è apparsa questa
+      foto?" non a "chi è in questa foto?".
+
+    last_verified: "2026-05-14"
+
+
+  - id: site-pimeyes
+    kind: website
+    name: PimEyes
+    applies_to:
+      entity_types: [person_name]
+    validation_status: unverified
+
+    url: "https://pimeyes.com/"
+    description: |
+      Face search dedicato e specializzato. Carica una foto di un
+      volto, restituisce dove quel volto appare online.
+    purpose: |
+      Identificare una persona dal solo volto, quando i reverse
+      image generalisti non riescono.
+
+    source_authority: commercial_variable
+    cost: freemium
+    privacy_impact: leak_query
+    geographic_scope: global
+
+    operational_notes: |
+      Controversie GDPR ricorrenti, restrizioni periodiche delle
+      funzioni in EU. Tier gratuito 2026 quasi simbolico — mostra
+      anteprima di match ma blocca il dettaglio dei risultati dietro
+      paywall aggressivo. Da provare ma con basso entusiasmo:
+      FaceCheck.ID o Lenso.ai potrebbero essere alternative più
+      accessibili.
+
+
+  - id: site-facecheck-id
+    kind: website
+    name: FaceCheck.ID
+    applies_to:
+      entity_types: [person_name]
+    validation_status: unverified
+
+    url: "https://facecheck.id/"
+    description: |
+      Face search alternativo a PimEyes, citato in liste OSINT 2026
+      come opzione con tier gratuito più accessibile.
+    purpose: |
+      Stessa funzione di PimEyes (face → identità) ma con maggior
+      uso effettivo del tier gratuito.
+
+    operational_notes: |
+      Da provare per confronto diretto con PimEyes su un caso noto
+      all'Operatore (es. propria foto), per misurare accuracy
+      effettiva e generosità del tier gratuito.
+
+
+  - id: site-lenso-ai
+    kind: website
+    name: Lenso.ai
+    applies_to:
+      entity_types: [person_name]
+    validation_status: unverified
+
+    url: "https://lenso.ai/"
+    description: |
+      Face search emergente con focus sul free tier. Restituisce
+      match facciali e URL dove l'immagine è apparsa.
+    purpose: |
+      Triangolare con FaceCheck.ID e PimEyes per scegliere un face
+      search di riferimento dopo prove sul campo.
+
+    operational_notes: |
+      Tool relativamente nuovo (citato in articoli 2025-2026).
+      Verificare nel test che l'accuracy effettiva non sia inferiore
+      ai concorrenti più consolidati. Possibile che cambi rapidamente
+      (pricing, funzionalità).
+
+
+  # ═══════════════════════════════════════════════════════════════
+  # USERNAME PIVOT (presente in person_name perché spesso indagine
+  # parte da nome ma deve continuare su username trovato durante)
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: cli-sherlock
+    kind: cli_tool
+    name: Sherlock
+    applies_to:
+      entity_types: [username, social_handle]
+    validation_status: unverified
+
+    invocation_template: "sherlock {value}"
+    description: |
+      Tool Python che cerca un username su 400+ piattaforme via
+      richieste dirette. Output testuale con presenza/assenza
+      dell'account su ciascuna piattaforma.
+
+    cli_requirements:
+      install: "pip install sherlock-project"
+      runtime: python3
+      install_notes: |
+        Disponibile via pip. Su Windows funziona da PowerShell o cmd.
+        Su Mac/Linux nativo. Tempo medio di esecuzione: 30-90 secondi
+        per pass completo.
+
+    source_authority: aggregator_automated
+    network_requirement: hybrid
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+
+    operational_notes: |
+      Tool standard del dominio per pivot username. Da validare nel
+      proprio uso reale — tasso di falsi positivi reale, qualità
+      della lista piattaforme nel 2026 (alcune voci storiche ormai
+      stale). Alternative emerse in liste 2026: Maigret (fork
+      potenziato di Sherlock con report HTML), WhatsMyName (lista
+      curata), Blackbird (600+ siti).
+
+
+  # ═══════════════════════════════════════════════════════════════
+  # META-RISORSA DI RIFERIMENTO
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: site-osint-framework
+    kind: website
+    name: OSINT Framework
+    applies_to:
+      entity_types: [person_name, email, username, phone, social_handle]
+    validation_status: verified
+
+    url: "https://osintframework.com/"
+    description: |
+      Albero di classificazione di risorse OSINT, organizzato per
+      tipo di dato di partenza. Non un tool da eseguire, ma il
+      catalogo strutturato più completo per orientarsi.
+    purpose: |
+      Quando POE non ha una voce per il caso specifico, OSINT
+      Framework è il punto di partenza per scoprire risorse
+      potenzialmente rilevanti. Meta-risorsa: serve per ESPANDERE
+      il catalogo POE, non per sostituirlo.
+
+    source_authority: aggregator_curated
+    network_requirement: online_browser
+    privacy_impact: leak_metadata
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+
+    triangulates_with: []
+
+    operational_notes: |
+      Manutenzione comunitaria, alcune voci possono essere stale.
+      Quando si scopre qui una risorsa interessante, il flusso
+      naturale è: provarla, poi aggiungerla al catalogo POE come
+      voce dedicata (con validation_status: unverified all'inizio).
+
+    last_verified: "2026-05-14"

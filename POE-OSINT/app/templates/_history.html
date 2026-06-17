@@ -1,0 +1,38 @@
+{# _history.html — contenuto della sezione "Osservazioni recenti".
+   v0.4: label personalizzato, accuratezza media, filtri kept/draft/all. #}
+
+{% if recent is defined %}
+<h2 id="history-heading">Osservazioni recenti</h2>
+
+<div class="filter-tabs">
+    <a href="/?view=all"   class="filter-tab {% if (current_view | default('all')) == 'all'   %}active{% endif %}">Tutte</a>
+    <a href="/?view=kept"  class="filter-tab {% if (current_view | default('all')) == 'kept'  %}active{% endif %}">&#9733; Kept</a>
+    <a href="/?view=draft" class="filter-tab {% if (current_view | default('all')) == 'draft' %}active{% endif %}">Draft</a>
+</div>
+
+{% if recent %}
+<ul class="history-list">
+    {% for item in recent %}
+    <li>
+        <a href="/e/{{ item.id }}" class="history-item">
+            <span class="ts">{{ item.timestamp }}</span>
+            <span class="preview">
+                {% if item.label %}
+                <span class="history-label">{{ item.label }}</span>
+                {% else %}
+                {{ item.raw_input[:80] }}{% if item.raw_input|length > 80 %}…{% endif %}
+                {% endif %}
+            </span>
+            <span class="history-meta">
+                <span class="count">{{ item.entities|length }} ent.</span>
+                {% if item.accuracy is defined and item.accuracy %}<span class="accuracy-sm">~{{ item.accuracy }}%</span>{% endif %}
+                {% if item.kept %}<span class="kept-indicator">&#9733;</span>{% endif %}
+            </span>
+        </a>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<p class="history-empty">Nessuna osservazione in questa vista.</p>
+{% endif %}
+{% endif %}

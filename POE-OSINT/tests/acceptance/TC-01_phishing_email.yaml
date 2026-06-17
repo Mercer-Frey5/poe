@@ -1,0 +1,69 @@
+# TC-01 — Phishing email con offuscamento
+# Priorità alta. Copre: deobfuscazione, dedup domain, email, URL, IP,
+# hash, phone E.164, username, stoplist person_name.
+
+metadata:
+  id: TC-01
+  title: "Phishing email con offuscamento"
+  priority: high
+  coverage_tags: [email, url, domain, ipv4, hash_md5, hash_sha256, phone, social_handle, deobfuscation, dedup]
+
+input:
+  text: |-
+    Da: security-alert@paypa1-verify.com
+    A: vittima@gmail.com
+    Oggetto: Verifica urgente del tuo account
+
+    Gentile Cliente,
+    abbiamo rilevato un accesso sospetto dal seguente IP: 192.168.1.100
+    e dal server 203.0.113.50.
+
+    Per confermare la tua identita clicca qui:
+    hxxps://paypa1-verify[.]com/login?token=abc123
+
+    Oppure visita: hxxp://bit[.]ly/3xFakeLink
+
+    File allegato hash MD5: d41d8cd98f00b204e9800998ecf8427e
+    SHA-256: a948904f2f0f479b8f8564e9f07f82e3f3f7b1d2c6e4a8f0b9d7c5e3a1f0b2d4
+
+    Per assistenza scrivi a: support@paypa1-verify.com
+    Contatto telefonico: +39 02 1234567
+    Referente: @fraud_dept
+
+must_extract:
+  entities:
+    - type: email
+      value: security-alert@paypa1-verify.com
+    - type: email
+      value: vittima@gmail.com
+    - type: email
+      value: support@paypa1-verify.com
+    - type: ipv4
+      value: 192.168.1.100
+    - type: ipv4
+      value: 203.0.113.50
+    - type: url
+      value: https://paypa1-verify.com/login?token=abc123
+    - type: url
+      value: http://bit.ly/3xFakeLink
+    - type: hash_md5
+      value: d41d8cd98f00b204e9800998ecf8427e
+    - type: hash_sha256
+      value: a948904f2f0f479b8f8564e9f07f82e3f3f7b1d2c6e4a8f0b9d7c5e3a1f0b2d4
+    - type: phone
+      value: "+39021234567"
+    - type: social_handle
+      value: "@fraud_dept"
+
+must_not_extract:
+  entities:
+    # Dedup: domini coperti da email e URL
+    - type: domain
+      value: paypa1-verify.com
+    - type: domain
+      value: gmail.com
+    - type: domain
+      value: bit.ly
+    # Stoplist: "Cliente" non e una persona
+    - type: person_name
+      value: Cliente

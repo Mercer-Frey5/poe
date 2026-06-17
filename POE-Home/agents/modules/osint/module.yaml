@@ -1,0 +1,3 @@
+name: osint
+display_name: "OSINT"
+trigger_keywords: ["osint", "cerca", "ricerca", "indaga", "chi è", "chi e'", "informazioni su"]

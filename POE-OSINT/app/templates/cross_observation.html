@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="cross-obs-section">
+  <h2 class="section-title">Entità: <code>{{ entity_value }}</code></h2>
+  <p class="obs-count">
+    Vista in {{ count }} osservazione{% if count != 1 %}i{% endif %}
+  </p>
+  {% if observations %}
+  <ul class="obs-list">
+    {% for obs in observations %}
+    <li class="obs-item">
+      <a href="/e/{{ obs.id }}">#{{ obs.id }} — {{ obs.timestamp[:10] }}
+        {% if obs.label %} · {{ obs.label }}{% endif %}
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="empty-state">Nessuna osservazione trovata.</p>
+  {% endif %}
+</section>
+{% endblock %}

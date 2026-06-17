@@ -1,0 +1,63 @@
+# TC-03 — Dump IoC secchi
+# Priorita alta. Copre: IP, hash, CVE, domain, URL, dedup.
+
+metadata:
+  id: TC-03
+  title: "Dump di indicatori di compromissione"
+  priority: high
+  coverage_tags: [ipv4, hash_md5, hash_sha256, cve, domain, url, dedup]
+
+input:
+  text: |-
+    === IoC Report 2026-05-01 ===
+
+    C2 servers:
+    45.33.32.156
+    104.244.42.129
+    198.51.100.23
+
+    Malware hashes:
+    MD5: 5d41402abc4b2a76b9719d911017c592
+    MD5: 098f6bcd4621d373cade4e832627b4f6
+    SHA-256: 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
+
+    Vulnerabilities exploited:
+    CVE-2024-21762
+    CVE-2023-44487
+
+    Infrastructure:
+    https://malware-c2.evil.net/beacon
+    evil-download.top
+    secondary-c2.evil.net
+
+must_extract:
+  entities:
+    - type: ipv4
+      value: 45.33.32.156
+    - type: ipv4
+      value: 104.244.42.129
+    - type: ipv4
+      value: 198.51.100.23
+    - type: hash_md5
+      value: 5d41402abc4b2a76b9719d911017c592
+    - type: hash_md5
+      value: 098f6bcd4621d373cade4e832627b4f6
+    - type: hash_sha256
+      value: 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08
+    - type: cve
+      value: CVE-2024-21762
+    - type: cve
+      value: CVE-2023-44487
+    - type: url
+      value: https://malware-c2.evil.net/beacon
+    - type: domain
+      value: evil-download.top
+    - type: domain
+      value: secondary-c2.evil.net
+
+must_not_extract:
+  entities:
+    # Dedup: evil.net coperto da URL e da secondary-c2.evil.net
+    # (il dominio compare come host nell'URL, quindi viene assorbito)
+    - type: domain
+      value: malware-c2.evil.net

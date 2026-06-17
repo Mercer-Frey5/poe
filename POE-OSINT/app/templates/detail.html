@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+
+{% block title %}{{ observation.label if observation.label else 'Osservazione #' ~ observation.id }} — POE{% endblock %}
+
+{% block content %}
+{# Breadcrumb + titolo — dentro content, non nell'header sticky #}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp-md);padding-bottom:var(--sp-sm);border-bottom:1px solid var(--color-border-subtle);">
+    <div>
+        <p style="font-family:var(--font-mono);font-size:0.82rem;color:var(--color-text-primary);font-weight:600;margin:0;">
+            {{ observation.label if observation.label else 'Osservazione #' ~ observation.id }}
+        </p>
+        <p style="font-family:var(--font-mono);font-size:0.68rem;color:var(--color-text-muted);margin:0.1rem 0 0;">
+            {{ observation.timestamp }}
+        </p>
+    </div>
+    <a href="/" class="back-link" style="font-size:0.75rem;">&#8592; home</a>
+</div>
+
+<section class="original-input" aria-labelledby="input-heading">
+    <h2 id="input-heading">Input originale</h2>
+    <pre>{{ observation.raw_input }}</pre>
+</section>
+
+<section aria-labelledby="entities-heading">
+    <h2 id="entities-heading" class="sr-only">Entità estratte</h2>
+    {{ m.render_entities(grouped_entities, observation.id, total, score=score, accuracy=accuracy, kept=kept, label=label, show_export=true) }}
+</section>
+
+<!-- Synthesis panel v0.5 — id="synthesis-panel" obbligatorio per hx-target della route -->
+<section id="synthesis-panel" style="margin-top:var(--sp-xl);">
+  {% if observation.synthesis_text %}
+    <div class="synthesis-panel-v5">
+      <div class="synthesis-header">
+        <span class="synthesis-title">&#9656; Sintesi Intelligence</span>
+        <span class="synthesis-model">{{ observation.synthesis_model or 'poe:latest' }}</span>
+      </div>
+      <div class="synthesis-body">{{ observation.synthesis_text }}</div>
+    </div>
+  {% else %}
+    <div style="display:flex;align-items:center;gap:var(--sp-md);">
+      <button
+        hx-post="/e/{{ observation.id }}/synthesis"
+        hx-target="#synthesis-panel"
+        hx-swap="outerHTML"
+        hx-indicator="#synth-spinner"
+        style="background:transparent;color:var(--color-accent-primary);border:1px solid var(--color-border-strong);padding:0.4rem 0.9rem;font-family:var(--font-mono);font-size:0.78rem;border-radius:var(--radius-sm);cursor:pointer;">
+        &#9656; Genera sintesi investigativa
+      </button>
+      <span id="synth-spinner" class="htmx-indicator" style="font-family:var(--font-mono);font-size:0.78rem;"> &#8635; Generazione...</span>
+    </div>
+  {% endif %}
+</section>
+{% endblock %}

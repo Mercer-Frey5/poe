@@ -1,0 +1,288 @@
+{# _macros.html — macro UI di POE v0.4.
+   Nota Jinja2: le variabili definite fuori dalla macro NON sono visibili
+   dentro il body della macro (scope isolato). Tutti i dati statici
+   (tooltip testo, wiki body) vengono inlineati direttamente. #}
+
+
+{% macro render_entities(grouped, observation_id, total, score=0, accuracy=0, kept=false, label=none, show_export=false) %}
+<article class="result-card" data-observation-id="{{ observation_id }}">
+    <header class="result-header">
+
+        {# ── Label / rinomina ── #}
+        <div class="obs-label-area" id="obs-label-area-{{ observation_id }}">
+            <div class="obs-label-display" id="obs-label-display-{{ observation_id }}">
+                <span class="obs-title-text">{{ label if label else 'Osservazione #' ~ observation_id }}</span>
+                <button type="button"
+                        class="label-edit-trigger"
+                        data-obs-id="{{ observation_id }}"
+                        title="Rinomina osservazione">&#x270E;</button>
+            </div>
+            <form class="obs-label-form obs-label-form--hidden"
+                  id="obs-label-form-{{ observation_id }}"
+                  hx-post="/e/{{ observation_id }}/label"
+                  hx-target="#obs-label-area-{{ observation_id }}"
+                  hx-swap="innerHTML">
+                <input type="text" name="label"
+                       value="{{ label or '' }}"
+                       placeholder="Nome osservazione…"
+                       class="label-input">
+                <button type="submit" class="label-save-btn" title="Salva">&#x2713;</button>
+                <button type="button" class="label-cancel-btn"
+                        data-obs-id="{{ observation_id }}" title="Annulla">&#x2715;</button>
+            </form>
+        </div>
+
+        {# ── Meta + azioni ── #}
+        <div class="result-header-right">
+            <span class="meta">
+                <strong>{{ total }}</strong> entità
+                {% if grouped %}· {{ grouped|length }} tipi{% endif %}
+            </span>
+            {% if score %}
+            <span class="score-badge" data-tooltip="Score = somma confidenze + bonus varietà tipi">score {{ score }}</span>
+            {% endif %}
+            {% if accuracy %}
+            <span class="accuracy-badge conf-accuracy-{{ 'high' if accuracy >= 80 else ('medium' if accuracy >= 55 else 'low') }}"
+                  data-tooltip="Media accuratezza stimata delle entità estratte">~{{ accuracy }}%</span>
+            {% endif %}
+            {{ render_kept_toggle(observation_id, kept) }}
+            {% if show_export %}
+            <a href="/e/{{ observation_id }}/export.md" class="export-btn" title="Scarica come Markdown">&#8595; .md</a>
+            {% endif %}
+            <button type="button"
+                    class="delete-obs-btn"
+                    hx-delete="/e/{{ observation_id }}"
+                    hx-target="article.result-card[data-observation-id='{{ observation_id }}']"
+                    hx-swap="delete"
+                    hx-confirm="Eliminare l'osservazione #{{ observation_id }}? L'azione non è reversibile."
+                    {% if show_export %}hx-on::after-request="window.location.href='/'"{% endif %}
+                    title="Elimina osservazione"
+                    aria-label="Elimina osservazione #{{ observation_id }}">&#x2715;</button>
+        </div>
+    </header>
+
+    {% if grouped %}
+    <div class="entity-groups">
+        {% for type, items in grouped.items() %}
+        <section class="entity-group" aria-labelledby="group-{{ observation_id }}-{{ type }}">
+            <h4 id="group-{{ observation_id }}-{{ type }}">
+                <span class="type-badge type-{{ type }}">{{ type }}</span>
+                <span class="count">{{ items|length }}</span>
+            </h4>
+            <div class="entity-list">
+                {% for item in items %}
+                {# ── Entity card espandibile (v0.5) ── #}
+                <div class="entity-card" onclick="toggleCard(this)">
+                    <div class="entity-row">
+                        <span class="entity-expand-icon" aria-hidden="true">&#9658;</span>
+                        <span class="entity-type-badge">{{ type }}</span>
+                        <code class="entity-value" title="{{ item.value }}">{{ item.value }}</code>
+
+                        <div class="entity-badges">
+                            {# Confidence #}
+                            {% if item.confidence == 'high' %}
+                            <span class="conf-badge conf-high" data-tooltip="High · ~90% accuratezza">H</span>
+                            {% elif item.confidence == 'low' %}
+                            <span class="conf-badge conf-low" data-tooltip="Low · ~35% accuratezza">L</span>
+                            {% else %}
+                            <span class="conf-badge conf-medium" data-tooltip="Medium · ~65% accuratezza">M</span>
+                            {% endif %}
+
+                            {# Bogon badge #}
+                            {% if item.metadata.get('bogon') %}
+                            <span class="badge-bogon" data-tooltip="{{ item.metadata.bogon_type }}">bogon</span>
+                            <a class="wiki-badge" href="https://en.wikipedia.org/wiki/Bogon_filtering" target="_blank" rel="noopener" onclick="event.stopPropagation()">wiki</a>
+                            {% endif %}
+
+                            {# CVE wiki link #}
+                            {% if type == 'cve' %}
+                            <a class="wiki-badge" href="https://en.wikipedia.org/wiki/Common_Vulnerabilities_and_Exposures" target="_blank" rel="noopener" onclick="event.stopPropagation()">wiki</a>
+                            {% endif %}
+
+                            {# Phone: regione/carrier label #}
+                            {% if type == "phone" and item.metadata.get("region") %}
+                            <span class="phone-flag" title="{{ item.metadata.region }}">{{ region_to_label(item.metadata.region) }}</span>
+                            {% endif %}
+
+                            {# IP geo enrich — auto-trigger al primo expand della card #}
+                            {% if type == 'ipv4' and not item.metadata.get('bogon') %}
+                              {% if not item.metadata.get('country') %}
+                            <button
+                              hx-post="/e/{{ observation_id }}/enrich/ipv4/{{ item.value }}"
+                              hx-swap="outerHTML"
+                              class="btn-inline"
+                              data-auto-enrich
+                              title="Geolocalizza IP (auto)"
+                              onclick="event.stopPropagation()">geo</button>
+                              {% else %}
+                            <span class="enrich-data">{{ item.metadata.country }}{% if item.metadata.get('city') %} / {{ item.metadata.city }}{% endif %}</span>
+                              {% endif %}
+                            {% endif %}
+
+                            {# Domain WHOIS enrich — auto-trigger al primo expand della card #}
+                            {% if type == 'domain' %}
+                              {% if not item.metadata.get('registrar') %}
+                            <button
+                              hx-post="/e/{{ observation_id }}/enrich/domain/{{ item.value }}"
+                              hx-swap="outerHTML"
+                              class="btn-inline"
+                              data-auto-enrich
+                              title="WHOIS (auto)"
+                              onclick="event.stopPropagation()">whois</button>
+                              {% else %}
+                            <span class="enrich-data">{{ item.metadata.registrar }}</span>
+                              {% endif %}
+                            {% endif %}
+
+                            {# LLM badge #}
+                            {% if item.metadata.get('extractor') == 'llm' %}
+                            <span class="source-tag api" style="flex-shrink:0;" title="Estratto da LLM">llm</span>
+                            {% endif %}
+
+                            {# TLD sospetto — sempre visibile in entity-row #}
+                            {% if item.metadata.get("suspicious_tld") %}
+                            <span class="flag-tag flag-suspicious-tld"
+                                  data-wiki-title="TLD Sospetto"
+                                  data-wiki-body="Questa estensione di primo livello (.xyz, .tk, .ml...) e frequentemente associata a campagne di phishing, malware e spam per il basso costo di registrazione. Non indica certezza di maliciousness: va trattato come segnale di allerta da correlare con altri indicatori."
+                                  role="button"
+                                  tabindex="0"
+                                  onclick="event.stopPropagation()">&#9888; tld</span>
+                            {% endif %}
+
+                            {# AI button #}
+                            <button class="btn-ai" onclick="toggleAI(this, event)" title="Analisi AI">AI</button>
+                        </div>
+                    </div>
+
+                    {# ── Pannello espandibile ── #}
+                    <div class="entity-panel">
+                        <div class="panel-main-content">
+                            <div class="sources-wrapper">
+                                <div class="sources-list">
+                                    {# Source #1: estrattore #}
+                                    <div class="source-group">
+                                        <div class="source-header">
+                                            <span class="source-name">
+                                                <span class="source-rank">#1</span>
+                                                {% if item.metadata.get('extractor') == 'llm' %}poe:latest (LLM)
+                                                {% elif item.metadata.get('extractor') == 'spacy' %}spaCy NER
+                                                {% else %}regex_extractor{% endif %}
+                                            </span>
+                                            <div class="source-meta">
+                                                <span class="source-tag tool">tool</span>
+                                                <button class="btn-raw" onclick="toggleRaw(this, event)">raw</button>
+                                            </div>
+                                        </div>
+                                        <div class="source-raw-data"><pre>tipo: {{ type }}
+valore: {{ item.value }}
+confidenza: {{ item.confidence }}{% if item.original and item.original != item.value %}
+originale: {{ item.original }}{% endif %}{% if item.metadata.get('extractor') %}
+estrattore: {{ item.metadata.extractor }}{% endif %}</pre></div>
+                                    </div>
+
+                                    {# Source #2: geo data se disponibile #}
+                                    {% if type == 'ipv4' and item.metadata.get('country') %}
+                                    <div class="source-group">
+                                        <div class="source-header">
+                                            <span class="source-name"><span class="source-rank">#2</span>ip-api.com</span>
+                                            <div class="source-meta">
+                                                <span class="source-tag api">api</span>
+                                                <button class="btn-raw" onclick="toggleRaw(this, event)">raw</button>
+                                            </div>
+                                        </div>
+                                        <div class="source-raw-data"><pre>paese: {{ item.metadata.get('country','—') }}
+città: {{ item.metadata.get('city','—') }}
+ISP: {{ item.metadata.get('isp','—') }}
+org: {{ item.metadata.get('org','—') }}</pre></div>
+                                    </div>
+                                    {% endif %}
+
+                                    {# Source #2: WHOIS se disponibile #}
+                                    {% if type == 'domain' and item.metadata.get('registrar') %}
+                                    <div class="source-group">
+                                        <div class="source-header">
+                                            <span class="source-name"><span class="source-rank">#2</span>python-whois</span>
+                                            <div class="source-meta">
+                                                <span class="source-tag tool">tool</span>
+                                                <button class="btn-raw" onclick="toggleRaw(this, event)">raw</button>
+                                            </div>
+                                        </div>
+                                        <div class="source-raw-data"><pre>registrar: {{ item.metadata.get('registrar','—') }}
+creato: {{ item.metadata.get('creation_date','—') }}
+scade: {{ item.metadata.get('expiration_date','—') }}</pre></div>
+                                    </div>
+                                    {% endif %}
+                                </div>
+
+                                {# Azioni: copia + elimina #}
+                                <div class="panel-actions">
+                                    {% if item.original and item.original != item.value %}
+                                    <span class="original-form" title="Forma originale">&#8592; {{ item.original }}</span>
+                                    {% else %}
+                                    <span></span>
+                                    {% endif %}
+
+                                    <div style="display:flex;gap:0.5rem;align-items:center;">
+                                        <button type="button"
+                                                class="copy-btn"
+                                                data-copy-value="{{ item.value }}"
+                                                title="Copia negli appunti"
+                                                aria-label="Copia {{ item.value }}"
+                                                onclick="event.stopPropagation()">&#x29C9; <span class="copy-label">copia</span></button>
+
+                                        <form class="entity-delete-form"
+                                              hx-post="/e/{{ observation_id }}/remove-entity"
+                                              hx-target="closest .entity-card"
+                                              hx-swap="delete"
+                                              hx-confirm="Rimuovere questa entita dall'osservazione?"
+                                              onclick="event.stopPropagation()">
+                                            <input type="hidden" name="entity_type" value="{{ type }}">
+                                            <input type="hidden" name="entity_value" value="{{ item.value }}">
+                                            <button type="submit" class="entity-delete-btn"
+                                                    title="Rimuovi questa entita"
+                                                    aria-label="Rimuovi {{ item.value }}"
+                                                    onclick="event.stopPropagation()">&#x2715;</button>
+                                        </form>
+                                    </div>
+                                </div>
+
+                                </div>
+
+                            {# AI split view (v0.5 placeholder) #}
+                            <div class="ai-wrapper">
+                                <div class="ai-placeholder">
+                                    <span style="font-size:1.2rem;opacity:0.4;">&#128269;</span>
+                                    <span>Analisi AI in standby</span>
+                                </div>
+                                <div class="ai-analysis-content"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="no-entities">Nessuna entità OSINT rilevata nel testo.</p>
+    {% endif %}
+</article>
+{% endmacro %}
+
+
+{% macro render_kept_toggle(observation_id, is_kept) %}
+<span id="kept-toggle-{{ observation_id }}">
+    <form hx-post="/e/{{ observation_id }}/keep"
+          hx-target="#kept-toggle-{{ observation_id }}"
+          hx-swap="outerHTML">
+        <input type="hidden" name="kept" value="{{ '0' if is_kept else '1' }}">
+        <button type="submit"
+                class="kept-btn {% if is_kept %}kept-active{% endif %}"
+                aria-pressed="{{ 'true' if is_kept else 'false' }}"
+                aria-label="{{ 'Rimuovi da kept' if is_kept else 'Marca come kept' }}">
+            {% if is_kept %}&#9733; kept{% else %}&#9734; draft{% endif %}
+        </button>
+    </form>
+</span>
+{% endmacro %}

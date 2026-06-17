@@ -1,0 +1,28 @@
+# POE v0.3 — dipendenze di runtime
+
+# Web framework
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+jinja2>=3.1.0
+python-multipart>=0.0.9
+
+# Estrazione NER per person_name
+spacy>=3.7.0
+
+# Config esterne (TLD list, stoplist person_name) — runtime in v0.3
+pyyaml>=6.0
+
+# Normalizzazione phone in E.164 (v0.3)
+phonenumbers>=8.13.0
+
+# Test
+pytest>=8.0.0
+
+# Note:
+# - I modelli spaCy (it_core_news_lg, en_core_web_lg) NON sono pacchetti PyPI
+#   normali: vanno scaricati con `python -m spacy download <nome>`.
+#   Il Dockerfile lo fa automaticamente; per setup locale vedi README.
+# - phonenumbers è il port Python di libphonenumber di Google: ~10MB di
+#   dati (regole regionali). Standard de facto, evita di reinventare il
+#   parsing dei prefissi internazionali.
+# - anthropic e ollama non sono in v0.3 (rientrano in v0.6 e v0.7).

@@ -1,0 +1,15 @@
+services:
+  poe:
+    build: .
+    container_name: poe
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persistenza del DB sul disco dell'host: data/poe.db
+      - ./data:/app/data
+    restart: unless-stopped
+    # In v0.1 non servono variabili d'ambiente (niente API key, niente LLM).
+    # Quando arriveranno (v0.4 per Ollama, v0.5 per Claude), si aggiunge qui:
+    # environment:
+    #   - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    #   - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}

@@ -1,0 +1,35 @@
+# TC-02 — Smishing SMS
+# Priorita alta. Copre: URL offuscato, phone E.164, dedup domain.
+
+metadata:
+  id: TC-02
+  title: "Smishing SMS con link offuscato"
+  priority: high
+  coverage_tags: [url, phone, domain, deobfuscation]
+
+input:
+  text: |-
+    [SMS ricevuto da +39 320 9876543]
+
+    POSTE ITALIANE: il tuo pacco e in attesa di consegna.
+    Conferma i dati di spedizione entro 24h:
+    hxxps://poste-italiane-tracking[.]com/pacco?id=IT987654
+
+    Per info chiama 800.123.456 o scrivi a assistenza@poste-italiane-tracking.com
+
+    Non rispondere a questo messaggio.
+
+must_extract:
+  entities:
+    - type: phone
+      value: "+393209876543"
+    - type: url
+      value: https://poste-italiane-tracking.com/pacco?id=IT987654
+    - type: email
+      value: assistenza@poste-italiane-tracking.com
+
+must_not_extract:
+  entities:
+    # Dedup: dominio coperto da URL e email
+    - type: domain
+      value: poste-italiane-tracking.com

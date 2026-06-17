@@ -1,0 +1,18 @@
+# TC-07a — Input vuoto
+# Priorita alta. La pipeline deve gestire input vuoto senza errori
+# e restituire zero entita.
+
+metadata:
+  id: TC-07a
+  title: "Input vuoto"
+  priority: high
+  coverage_tags: [edge_case, empty]
+
+input:
+  text: ""
+
+must_extract:
+  entities: []
+
+must_not_extract:
+  entities: []

@@ -1,0 +1,54 @@
+# Caso di accettazione di esempio per v0.2.
+# Estende il TC-EXAMPLE di v0.1 con: hash_sha256, cve, deobfuscazione.
+
+metadata:
+  id: TC-EXAMPLE
+  title: "Esempio end-to-end misto v0.2"
+  priority: high
+  coverage_tags: [email, ipv4, url, hash_md5, hash_sha256, cve, phone, social_handle, deobfuscation]
+
+input:
+  text: |-
+    Oggetto: phishing suspect
+    Mittente: support@paypa1.com
+    IP log: 185.220.101.42
+    Link defanged: hxxps://login-paypa1[.]com/verify
+    Dominio sospetto: clouddrive-sync[.]xyz
+    Hash MD5: 44d88612fea8a8f36de82e1278abb02f
+    Hash SHA-256: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    Vulnerabilità sfruttata: CVE-2024-12345
+    Contatto: @mrossi_official
+    Cell: +39 347 1234567
+
+must_extract:
+  entities:
+    - type: email
+      value: support@paypa1.com
+    - type: ipv4
+      value: 185.220.101.42
+    - type: url
+      value: https://login-paypa1.com/verify     # deobfuscato
+    - type: domain
+      value: clouddrive-sync.xyz                  # deobfuscato
+    - type: hash_md5
+      value: 44d88612fea8a8f36de82e1278abb02f
+    - type: hash_sha256
+      value: e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855
+    - type: cve
+      value: CVE-2024-12345
+    - type: social_handle
+      value: "@mrossi_official"
+    - type: phone
+      value: "+393471234567"
+
+must_not_extract:
+  entities:
+    # Dedup: il dominio è coperto dall'email e dall'URL
+    - type: domain
+      value: paypa1.com
+    - type: domain
+      value: login-paypa1.com
+    # Stoplist person_name: "Contatto" non deve essere persona
+    # (questa asserzione è significativa solo con spaCy reale)
+    - type: person_name
+      value: Contatto

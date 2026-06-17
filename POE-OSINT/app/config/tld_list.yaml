@@ -1,0 +1,171 @@
+# IANA TLD list — seed iniziale di POE v0.3
+#
+# Questo file viene caricato dal RegexExtractor per filtrare i candidati
+# domain. Una TLD non listata qui non viene riconosciuta come dominio.
+#
+# QUESTO È UN SEED INIZIALE (~150 TLD comuni), NON la lista IANA completa.
+# La lista IANA ufficiale conta ~1500 TLD. Per scaricarla:
+#
+#     python scripts/refresh_tlds.py
+#
+# Lo script richiede accesso di rete a https://data.iana.org/ e va eseguito
+# manualmente dall'Operatore. Il seed copre TLD comuni e gTLD diffusi:
+# è sufficiente per uso quotidiano ma può perdere ccTLD esotici e nuovi
+# gTLD. Il refresh si consiglia ogni 6-12 mesi.
+#
+# Refresh effettuato: mai (file in stato seed)
+# Conteggio: 140 TLD
+#
+# NON modificare a mano. Per aggiornare lanciare lo script.
+
+# ccTLD (country-code top-level domains) — selezione comuni
+- ar
+- at
+- au
+- be
+- br
+- ca
+- ch
+- cl
+- cn
+- co
+- cz
+- de
+- dk
+- eg
+- es
+- eu
+- fi
+- fr
+- gr
+- hk
+- hu
+- id
+- ie
+- il
+- in
+- ir
+- is
+- it
+- jp
+- kr
+- lu
+- mx
+- my
+- nl
+- "no"   # 'no' è una keyword YAML, va quotato
+- nz
+- pe
+- ph
+- pl
+- pt
+- ro
+- ru
+- sa
+- se
+- sg
+- sk
+- th
+- tr
+- tw
+- ua
+- uk
+- us
+- vn
+- za
+
+# gTLD (generic top-level domains) — storici
+- com
+- net
+- org
+- info
+- biz
+- name
+- pro
+- mobi
+
+# gTLD restrittivi
+- edu
+- gov
+- mil
+- int
+
+# gTLD nuovi diffusi (ICANN expansion 2014+)
+- academy
+- agency
+- app
+- art
+- bank
+- blog
+- business
+- cloud
+- club
+- co
+- coffee
+- consulting
+- design
+- dev
+- digital
+- email
+- expert
+- finance
+- foundation
+- group
+- guide
+- health
+- help
+- host
+- icu
+- io
+- legal
+- life
+- live
+- ltd
+- media
+- network
+- news
+- ninja
+- online
+- page
+- press
+- pro
+- shop
+- site
+- software
+- solutions
+- space
+- store
+- studio
+- support
+- systems
+- tech
+- today
+- top
+- tools
+- training
+- video
+- vip
+- wiki
+- work
+- world
+- xyz
+- zone
+
+# TLD legacy comuni in casi OSINT (servizi che le usano per phishing/malware)
+- tk
+- ml
+- ga
+- cf
+- gq
+- cc
+- ws
+- pw
+- icu
+- buzz
+- click
+- link
+- monster
+- rest
+
+# Subdomini-TLD storici di servizi anonimizzazione (defang frequente)
+- onion

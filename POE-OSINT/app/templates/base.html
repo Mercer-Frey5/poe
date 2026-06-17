@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <title>{% block title %}POE — Personal Observation Engine{% endblock %}</title>
+
+    {# Google Fonts: preconnect per parallelizzare la TLS handshake col DNS lookup,
+       poi un solo link ?family=... che racchiude tutte le famiglie usate.
+       v0.3 collassa al solo tema tech-mono: monospace IBM Plex + Orbitron per il logo. #}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Orbitron:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="/static/style.css?v=0.5.1">
+    <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-top">
+            <div class="brand">
+                <a href="/" class="brand-link">
+                    <span class="brand-eye" aria-hidden="true">👁</span>
+                    <span class="brand-name">POE</span>
+                </a>
+                <span class="brand-subtitle">Personal Observation Engine</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+                <span class="version-badge">v0.5.0</span>
+                <nav class="header-nav" aria-label="Navigazione principale">
+                    <a href="/" class="nav-link {% block nav_analisi %}{% endblock %}">Analisi</a>
+                    <a href="/?view=all" class="nav-link {% block nav_cronologia %}{% endblock %}">Cronologia</a>
+                    <a href="/?view=kept" class="nav-link {% block nav_kept %}{% endblock %}">Kept</a>
+                </nav>
+            </div>
+        </div>
+
+        {# Status bar servizi esterni — statica per ora, v0.6 aggiungerà health check endpoint #}
+        <div class="status-bar-wrapper">
+            <div class="status-bar" aria-label="Stato servizi">
+                <span class="status-label">Servizi</span>
+                <div class="status-items">
+                    <div class="status-item">
+                        <div class="status-dot online" title="Operativo"></div>
+                        <span class="status-name">ip-api.com</span>
+                    </div>
+                    <div class="status-sep"></div>
+                    <div class="status-item">
+                        <div class="status-dot online" title="Operativo"></div>
+                        <span class="status-name">WHOIS</span>
+                    </div>
+                    <div class="status-sep"></div>
+                    <div class="status-item">
+                        <div class="status-dot slow" title="In uso"></div>
+                        <span class="status-name">Ollama / poe:latest</span>
+                    </div>
+                    <div class="status-sep"></div>
+                    <div class="status-item">
+                        <div class="status-dot online" title="Locale"></div>
+                        <span class="status-name">spaCy NER</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% block header_tagline %}{% endblock %}
+    </header>
+
+    <main class="site-main">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="site-footer">
+        <small>POE v0.5.0 · tutto in locale · nessun dato inviato</small>
+    </footer>
+
+    <script src="/static/app.js?v=0.5.1" defer></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

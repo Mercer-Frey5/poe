@@ -1,0 +1,9 @@
+{% import "_macros.html" as m %}
+
+{# Frammento principale: va in #results (target del form). #}
+{{ m.render_entities(grouped_entities, observation_id, total, score=score, accuracy=accuracy, kept=kept, label=label) }}
+
+{# Frammento out-of-band: aggiorna la sezione "Osservazioni recenti". #}
+<section id="history" class="history" aria-labelledby="history-heading" hx-swap-oob="true">
+    {% include "_history.html" %}
+</section>

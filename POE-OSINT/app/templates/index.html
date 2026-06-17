@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block nav_analisi %}active{% endblock %}
+
+{% block content %}
+<section class="analyzer" aria-labelledby="analyzer-heading">
+    <h2 id="analyzer-heading" class="sr-only">Analizzatore</h2>
+
+    <p class="poe-greeting">Sistema attivo. Input pronto.</p>
+
+    <div class="input-section">
+        <div class="input-label">Testo da analizzare</div>
+        <form
+            id="analyze-form"
+            hx-post="/analyze"
+            hx-target="#results"
+            hx-indicator="#spinner"
+            hx-swap="innerHTML"
+        >
+            <label for="text-input" class="sr-only">Testo da analizzare</label>
+            <textarea
+                id="text-input"
+                name="text"
+                placeholder="Incolli qui ciò che desidera farmi osservare. Email, log, frammenti di report, indicatori sospetti…"
+                rows="8"
+                required
+                autofocus
+                maxlength="50000"
+                data-charcounter
+                data-submit-on-enter
+                aria-describedby="char-count-label keyboard-hint"
+            ></textarea>
+
+            <div class="form-meta">
+                <span id="char-count-label" class="char-counter">
+                    <span data-charcount>0</span> caratteri
+                </span>
+                <span id="keyboard-hint" class="keyboard-hint">
+                    <kbd>Invio</kbd> per osservare ·
+                    <kbd>Shift</kbd>+<kbd>Invio</kbd> per andare a capo
+                </span>
+            </div>
+
+            <div class="form-row">
+                <button type="submit">Osserva</button>
+                <span id="spinner" class="htmx-indicator" role="status">
+                    ⏳ Sto osservando…
+                </span>
+            </div>
+        </form>
+    </div>
+
+    <div id="results" aria-live="polite" aria-atomic="false"></div>
+</section>
+
+{# Sezione history: il wrapper <section id="history"> è SEMPRE presente nel DOM,
+   anche quando il DB è vuoto. Permette ad HTMX di sostituire il contenuto via
+   out-of-band swap dopo ogni POST /analyze (vedi results.html). #}
+<section id="history" class="history" aria-labelledby="history-heading">
+    {% include "_history.html" %}
+</section>
+{% endblock %}

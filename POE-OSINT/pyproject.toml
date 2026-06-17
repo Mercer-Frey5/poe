@@ -1,0 +1,79 @@
+[project]
+name = "poe"
+version = "0.4.0"
+description = "Personal Observation Engine — tool OSINT personale per estrazione deterministica di entità"
+readme = "README.md"
+requires-python = ">=3.12,<3.14"
+license = { text = "Proprietary" }
+authors = [
+    { name = "Operatore", email = "operatore@local" },
+]
+
+# Dipendenze di runtime.
+# Tradotte 1:1 da requirements.txt.
+dependencies = [
+    # Web framework
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "jinja2>=3.1.5",
+    "python-multipart>=0.0.12",
+    "ollama>=0.4.0",
+    "python-whois>=0.9.5",
+
+    # Estrazione NER per person_name
+    "spacy>=3.7.0",
+
+    # Config esterne (TLD list, stoplist person_name)
+    "pyyaml>=6.0",
+
+    # Normalizzazione phone in E.164
+    "phonenumbers>=8.13.0",
+]
+
+# Dipendenze di sviluppo (test, linting in futuro).
+# Si installano con `uv sync` automaticamente, oppure
+# `uv sync --no-dev` per saltare.
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "bandit>=1.8.0",
+    "ruff>=0.4.0",
+    "pytest-cov>=5.0.0",
+    "pytest-asyncio>=0.23.0",
+    "respx>=0.21.0",
+]
+
+# uv-specific: configurazione del package manager.
+[tool.uv]
+# Progetto applicativo, non libreria pubblicabile su PyPI.
+package = false
+
+# pytest config (replica eventuale conftest.py impostazioni).
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+asyncio_mode = "auto"
+
+# Note operative:
+#
+# - Versione Python: vincolata a >=3.12,<3.14 perché spaCy 3.x non ha
+#   ancora wheel per Python 3.14 (al momento del rilascio v0.3, gennaio 2026).
+#   Il file .python-version dichiara 3.12 come versione preferita; uv la
+#   scarica automaticamente se non presente sul sistema. Quando spaCy
+#   pubblicherà wheel per 3.14, rilassare il vincolo a >=3.12,<3.15.
+#
+# - I modelli spaCy (it_core_news_lg, en_core_web_lg) NON sono pacchetti PyPI
+#   normali. Vanno scaricati separatamente con:
+#       uv run python -m spacy download it_core_news_lg
+#       uv run python -m spacy download en_core_web_lg
+#   Il download è ~1 GB tra i due, una sola volta.
+#
+# - phonenumbers è il port Python di libphonenumber di Google: ~10MB di
+#   dati (regole regionali). Standard de facto, evita di reinventare il
+#   parsing dei prefissi internazionali.
+#
+# - anthropic e ollama non sono in v0.3 (rientrano in v0.6 e v0.7).
+#
+# - Il file requirements.txt è mantenuto come alternativa per chi
+#   preferisce il workflow venv classico. pyproject.toml e
+#   requirements.txt devono restare allineati a ogni rilascio.

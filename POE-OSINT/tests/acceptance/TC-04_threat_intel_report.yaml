@@ -1,0 +1,57 @@
+# TC-04 — Report threat intel misto IT/EN
+# Priorita alta. Copre: person_name (spaCy), email, domain, IP, CVE,
+# hash, testo misto italiano/inglese.
+
+metadata:
+  id: TC-04
+  title: "Report threat intel misto italiano/inglese"
+  priority: high
+  coverage_tags: [person_name, email, domain, ipv4, cve, hash_md5, url]
+
+input:
+  text: |-
+    REPORT DI INTELLIGENCE — Confidenziale
+
+    Il ricercatore Marco Bianchi (marco.bianchi@certitalia.example.it)
+    ha identificato una campagna di spear-phishing attribuita al gruppo
+    noto come DarkHydra.
+
+    The campaign leverages CVE-2024-30051 to deliver a custom loader.
+    Initial access vector: email con allegato .docx malevolo.
+
+    Indicatori tecnici:
+    - Beacon IP: 185.220.101.1
+    - Exfil endpoint: https://data-collect.darkhydra.example.org/upload
+    - Loader hash MD5: 7b52009b64fd0a2a49e6d8a939753077
+    - Domain registrato il 2026-01-15: darkhydra.example.org
+
+    Segnalazione interna a cura di Giulia Neri, SOC analyst.
+    Contatto: giulia.neri@certitalia.example.it
+
+must_extract:
+  entities:
+    - type: email
+      value: marco.bianchi@certitalia.example.it
+    - type: email
+      value: giulia.neri@certitalia.example.it
+    - type: cve
+      value: CVE-2024-30051
+    - type: ipv4
+      value: 185.220.101.1
+    - type: url
+      value: https://data-collect.darkhydra.example.org/upload
+    - type: hash_md5
+      value: 7b52009b64fd0a2a49e6d8a939753077
+    - type: domain
+      value: darkhydra.example.org
+
+must_not_extract:
+  entities:
+    # Dedup: domini coperti da email e URL
+    - type: domain
+      value: certitalia.example.it
+    - type: domain
+      value: data-collect.darkhydra.example.org
+    # Stoplist: parole italiane che spaCy potrebbe confondere
+    - type: person_name
+      value: Contatto

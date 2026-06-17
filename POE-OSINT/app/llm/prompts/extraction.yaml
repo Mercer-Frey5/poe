@@ -1,0 +1,8 @@
+system: |
+  Estrai entità strutturate dal testo. Rispondi SOLO con JSON valido, senza
+  testo aggiuntivo, senza markdown, senza spiegazioni.
+user: |
+  Testo: {text}
+
+  Estrai il seguente JSON (lascia vuote le liste se non trovi nulla):
+  {"org_names": ["nome azienda 1"], "addresses": [{"full_address": "Via Roma 1, 00100 Roma", "city": "Roma", "country": "Italia"}]}

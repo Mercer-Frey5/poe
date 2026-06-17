@@ -1,0 +1,48 @@
+# TC-06 — Self-OSINT esposizione personale
+# Priorita media. Copre: person_name, email, phone, username, domain.
+# Scenario: l'Operatore cerca la propria esposizione online.
+
+metadata:
+  id: TC-06
+  title: "Self-OSINT esposizione personale"
+  priority: medium
+  coverage_tags: [person_name, email, phone, social_handle, domain]
+
+input:
+  text: |-
+    Verifica esposizione personale per Laura Verdi.
+
+    Profili trovati:
+    - Email personale: laura.verdi85@gmail.com
+    - Email lavoro: l.verdi@acme-consulting.it
+    - Telefono: +39 348 5551234
+    - Username forum: @lauraV85
+    - Sito personale: lauraverdi.dev
+
+    Il CV e stato trovato pubblicamente su:
+    https://lauraverdi.dev/cv/Laura_Verdi_CV.pdf
+
+    Profilo LinkedIn visibile senza login.
+
+must_extract:
+  entities:
+    - type: email
+      value: laura.verdi85@gmail.com
+    - type: email
+      value: l.verdi@acme-consulting.it
+    - type: phone
+      value: "+393485551234"
+    - type: social_handle
+      value: "@lauraV85"
+    - type: url
+      value: https://lauraverdi.dev/cv/Laura_Verdi_CV.pdf
+
+must_not_extract:
+  entities:
+    # Dedup: domini coperti da email e URL
+    - type: domain
+      value: gmail.com
+    - type: domain
+      value: acme-consulting.it
+    - type: domain
+      value: lauraverdi.dev
