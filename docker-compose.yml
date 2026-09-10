@@ -1,0 +1,31 @@
+services:
+  poe:
+    build: .
+    container_name: poe
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persistenza del DB sul disco dell'host: data/poe.db
+      # ATTENZIONE: contiene le osservazioni reali. E' in .gitignore, non va
+      # mai committato.
+      # Il container gira come utente non privilegiato (uid 1000): prima del
+      # primo avvio crea la cartella con permessi di scrittura per quell'uid,
+      # es. `mkdir -p data && chmod 777 data` (strumento locale mono-utente,
+      # non un server multi-tenant esposto a terzi).
+      - ./data:/app/data
+    # API key e configurazione: vedi .env.example. Il file e' opzionale —
+    # senza, POE parte lo stesso e i lookup key-gated degradano a link esterni.
+    # NON mettere ANTHROPIC_API_KEY: il backend Claude usa l'abbonamento via
+    # Claude Code, non l'API a token, e POE rimuove comunque la variabile
+    # dall'ambiente del subprocess.
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # In container il backend LLM locale e' Ollama: MLX e' solo Apple Silicon.
+      # Ollama gira sull'host, non nel container.
+      - POE_LLM_BACKEND=${POE_LLM_BACKEND:-ollama}
+      - OLLAMA_HOST=${OLLAMA_HOST:-http://host.docker.internal:11434}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped

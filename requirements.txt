@@ -1,0 +1,64 @@
+# POE — dipendenze di runtime.
+#
+# Allineato 1:1 alle `dependencies` di pyproject.toml (che resta la fonte
+# autorevole per `uv`). Questo file serve al Dockerfile e a chi preferisce il
+# workflow venv+pip classico. Il test tests/test_requirements_sync.py fa
+# fallire la build se i due divergono o se app/ importa qualcosa di non
+# dichiarato: era gia' successo: requirements.txt e' rimasto fermo a v0.3
+# mentre app/ aveva iniziato a importare dotenv/httpx/ollama/reportlab/whois,
+# rendendo l'immagine Docker non avviabile.
+
+# Web framework
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+jinja2>=3.1.5
+python-multipart>=0.0.12
+
+# HTTP client per enricher e lookup live
+httpx>=0.27.0
+
+# Validazione modelli I/O
+pydantic>=2.0
+
+# Estrazione NER per person_name
+spacy>=3.7.0
+
+# Config esterne (TLD list, stoplist person_name, pesi risk scoring)
+pyyaml>=6.0
+
+# Normalizzazione phone in E.164
+phonenumbers>=8.13.0
+
+# WHOIS/RDAP domini
+python-whois>=0.9.5
+
+# Legge .env (API key servizi esterni) — vedi .env.example
+python-dotenv>=1.0.0
+
+# Backend LLM locale via Ollama (l'alternativa MLX e' solo macOS, vedi sotto)
+ollama>=0.4.0
+
+# Export PDF del report investigativo
+reportlab>=5.0.0
+
+# Rendering Markdown del report
+markdown-it-py>=4.0.0
+
+# email -> account registrati (invocato come subprocess)
+holehe>=1.61
+
+# Test
+pytest>=8.0.0
+
+# Note:
+# - I modelli spaCy (it_core_news_lg, en_core_web_lg) NON sono pacchetti PyPI
+#   normali: vanno scaricati con `python -m spacy download <nome>`.
+#   Il Dockerfile lo fa automaticamente; per setup locale vedi README.
+# - phonenumbers e' il port Python di libphonenumber di Google: ~10MB di
+#   dati (regole regionali). Standard de facto, evita di reinventare il
+#   parsing dei prefissi internazionali.
+# - mlx-lm NON e' qui: e' solo macOS/Apple Silicon (marker
+#   `sys_platform == 'darwin'` in pyproject.toml) e l'immagine Docker e'
+#   Linux. In container il backend LLM e' Ollama.
+# - mcp NON e' qui: serve solo al connettore poe_mcp/, che gira come processo
+#   locale sull'host e non viene copiato nell'immagine.

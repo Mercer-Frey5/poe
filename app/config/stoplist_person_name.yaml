@@ -1,0 +1,38 @@
+# Stoplist person_name — etichette di campo italiane/inglesi che spaCy
+# NER può classificare erroneamente come PERSONE.
+#
+# Caricata da app/extractors/spacy_extractor.py al boot. Il match è
+# esatto e case-insensitive sulla forma normalizzata. Una candidata
+# entità person_name il cui valore (lowercase, stripped) è in questa
+# lista viene scartata silenziosamente.
+#
+# Aggiungi qui voci nuove quando vedi falsi positivi nel tuo flusso
+# investigativo. Modifiche al file richiedono restart dell'applicazione.
+#
+# Conservatismo: meglio un FP di troppo che un FN su un nome reale.
+# Quando in dubbio, NON aggiungere alla stoplist.
+
+# Intestazioni di email italiane
+- contatto
+- contatti
+- mittente
+- destinatario
+- oggetto
+- soggetto
+- da
+- a
+
+# Intestazioni email inglesi (mail miste)
+- from
+- to
+- subject
+
+# Etichette tecniche scambiate per nomi
+- hash
+- link
+- url
+- host
+- ip
+- telefono
+- cell
+- cellulare

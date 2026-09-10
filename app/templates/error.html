@@ -1,0 +1,11 @@
+{# Usato sia come pagina full sia come partial HTMX.
+   Quando serve la pagina full (es. 500 non-HTMX) si può estendere base.html;
+   in v0.1 viene principalmente ritornato come partial. #}
+<div class="error-card" role="alert">
+    <h3>⚠️ Errore durante l'analisi</h3>
+    <pre>{{ error }}</pre>
+    <p class="hint">
+        Riprova. Se il problema persiste, controlla i log del server
+        (il terminale di <code>uvicorn</code> o <code>docker compose logs</code>).
+    </p>
+</div>

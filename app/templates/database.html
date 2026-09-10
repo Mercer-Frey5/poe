@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block title %}Database — POE{% endblock %}
+{% block nav_database %}active{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp-md);padding-bottom:var(--sp-sm);border-bottom:1px solid var(--color-border-subtle);">
+    <h2 style="font-family:var(--font-mono);font-size:0.95rem;margin:0;">Database — tutte le osservazioni ({{ total }})</h2>
+    <a href="/" class="back-link" style="font-size:0.75rem;">&#8592; home</a>
+</div>
+
+{# Pagina dedicata (non un partial HTMX come _history.html): i filtri sono
+   navigazione pagina intera, coerente con lo scopo "vedi tutto" — niente
+   swap parziale da coordinare col resto della pagina base.html. #}
+<div class="filter-tabs">
+    <a href="/database?view=all"
+       class="filter-tab {% if (current_view | default('all')) == 'all'   %}active{% endif %}">Tutte</a>
+    <a href="/database?view=kept"
+       class="filter-tab {% if (current_view | default('all')) == 'kept'  %}active{% endif %}">&#9733; Preferiti</a>
+    <a href="/database?view=draft"
+       class="filter-tab {% if (current_view | default('all')) == 'draft' %}active{% endif %}">Bozze</a>
+</div>
+
+{% if recent %}
+<ul class="history-list database-list">
+    {% for item in recent %}
+    <li class="history-li">
+        <a href="/e/{{ item.id }}" class="history-item">
+            <span class="ts">{{ item.timestamp }}</span>
+            <span class="preview">
+                {% if item.label %}
+                <span class="history-label">{{ item.label }}</span>
+                {% else %}
+                {{ item.raw_input[:80] }}{% if item.raw_input|length > 80 %}…{% endif %}
+                {% endif %}
+            </span>
+            <span class="history-meta">
+                <span class="count">{{ item.entities|length }} ent.</span>
+                {% if item.accuracy is defined and item.accuracy %}<span class="accuracy-sm">~{{ item.accuracy }}%</span>{% endif %}
+            </span>
+        </a>
+        <form class="history-star-form"
+              hx-post="/e/{{ item.id }}/keep"
+              hx-target="this" hx-swap="outerHTML">
+            <input type="hidden" name="kept" value="{{ '0' if item.kept else '1' }}">
+            <button type="submit"
+                    class="history-star {% if item.kept %}history-star-active{% endif %}"
+                    title="{{ 'Nei Preferiti' if item.kept else 'Aggiungi ai Preferiti' }}"
+                    aria-label="Preferito">{% if item.kept %}&#9733;{% else %}&#9734;{% endif %}</button>
+        </form>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<p class="history-empty">Nessuna osservazione in questa vista.</p>
+{% endif %}
+{% endblock %}

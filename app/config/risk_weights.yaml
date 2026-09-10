@@ -1,0 +1,13 @@
+# Pesi/soglie del risk scoring — vocabolario controllato (fail-fast su malformato).
+# Pensati per essere ritoccati con l'uso reale, non una scienza esatta al primo giro.
+weights:
+  reputation_malicious: 100
+  suspicious_tld: 30
+  pivot_correlated: 10
+  domain_young: 20
+pivot_threshold: 3
+domain_young_days: 30
+buckets:
+  - {min_score: 100, level: critico}
+  - {min_score: 30,  level: sospetto}
+  - {min_score: 1,   level: basso}

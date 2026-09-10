@@ -1,0 +1,28 @@
+# Feed reputation gratis, nessuna API key. Subset RECENTI/attivi.
+# `full: true` (futuro) per i dump completi. URL da verificare se le fonti cambiano i path.
+feeds:
+  - name: threatfox
+    url: https://threatfox.abuse.ch/export/json/recent/
+    format: threatfox_json
+    ttl_hours: 12
+    full: false
+  - name: urlhaus
+    url: https://urlhaus.abuse.ch/downloads/csv_online/
+    format: urlhaus_csv
+    ttl_hours: 12
+    full: false
+  - name: feodo
+    url: https://feodotracker.abuse.ch/downloads/ipblocklist.json
+    format: feodo_json
+    ttl_hours: 12
+    full: false
+  - name: malwarebazaar
+    url: https://bazaar.abuse.ch/export/txt/sha256/recent/
+    format: mb_txt
+    ttl_hours: 24
+    full: false
+  - name: blocklistde
+    url: https://lists.blocklist.de/lists/all.txt
+    format: blocklistde_txt
+    ttl_hours: 12
+    full: false

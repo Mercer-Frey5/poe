@@ -1,0 +1,23 @@
+# confidence_vocabulary.yaml — vocabolario controllato per Entity.confidence
+#
+# Valori ammessi per il campo `confidence` di Entity (v0.4+).
+# Tassonomia coerente con il Principio di trasparenza della confidenza
+# registrato in STATUS.md.
+#
+# NOTA SYNC: i valori qui devono coincidere con _VALID_CONFIDENCE
+# in app/models.py. Aggiornare entrambi se si aggiunge un livello.
+#
+# Tassonomia:
+# - high:   verifica matematica/strutturale (check digit, libreria validatrice,
+#           range RFC con algoritmo deterministico)
+# - medium: verifica formale (regex con pattern morfologico specifico, whitelist
+#           TLD, formato con lunghezza fissa senza check digit)
+# - low:    estrazione statistica (NER spaCy) o pattern contestuale senza
+#           verifica esterna (birth_date con marcatori, username generico)
+
+values:
+  - high
+  - medium
+  - low
+
+default: medium

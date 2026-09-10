@@ -1,0 +1,67 @@
+{# _history.html — contenuto della sezione "Osservazioni recenti".
+   v0.4: label personalizzato, accuratezza media, filtri kept/draft/all. #}
+
+{% if recent is defined %}
+{% set _limit = (current_limit | default(30)) %}
+<h2 id="history-heading">Osservazioni</h2>
+
+<div class="filter-tabs">
+    <a href="/?view=all&limit={{ _limit }}"   hx-get="/history?view=all&limit={{ _limit }}"   hx-target="#history" hx-swap="innerHTML" style="cursor:pointer;"
+       class="filter-tab {% if (current_view | default('all')) == 'all'   %}active{% endif %}">Tutte</a>
+    <a href="/?view=kept&limit={{ _limit }}"  hx-get="/history?view=kept&limit={{ _limit }}"  hx-target="#history" hx-swap="innerHTML" style="cursor:pointer;"
+       class="filter-tab {% if (current_view | default('all')) == 'kept'  %}active{% endif %}">&#9733; Preferiti</a>
+    <a href="/?view=draft&limit={{ _limit }}" hx-get="/history?view=draft&limit={{ _limit }}" hx-target="#history" hx-swap="innerHTML" style="cursor:pointer;"
+       class="filter-tab {% if (current_view | default('all')) == 'draft' %}active{% endif %}">Bozze</a>
+
+    <label class="history-limit-label" for="history-limit-select">Mostra
+        <select id="history-limit-select"
+                hx-get="/history?view={{ current_view | default('all') }}"
+                hx-target="#history" hx-swap="innerHTML"
+                hx-trigger="change"
+                hx-include="this"
+                name="limit">
+            <option value="10"  {% if _limit == 10  %}selected{% endif %}>10</option>
+            <option value="30"  {% if _limit == 30  %}selected{% endif %}>30</option>
+            <option value="50"  {% if _limit == 50  %}selected{% endif %}>50</option>
+            <option value="100" {% if _limit == 100 %}selected{% endif %}>100</option>
+            <option value="200" {% if _limit == 200 %}selected{% endif %}>200</option>
+        </select>
+    </label>
+</div>
+
+{% if recent %}
+<ul class="history-list">
+    {% for item in recent %}
+    <li class="history-li">
+        <a href="/e/{{ item.id }}" class="history-item">
+            <span class="ts">{{ item.timestamp }}</span>
+            <span class="preview">
+                {% if item.label %}
+                <span class="history-label">{{ item.label }}</span>
+                {% else %}
+                {{ item.raw_input[:80] }}{% if item.raw_input|length > 80 %}…{% endif %}
+                {% endif %}
+            </span>
+            <span class="history-meta">
+                <span class="count">{{ item.entities|length }} ent.</span>
+                {% if item.accuracy is defined and item.accuracy %}<span class="accuracy-sm">~{{ item.accuracy }}%</span>{% endif %}
+            </span>
+        </a>
+        {# Stella Preferiti: sorella dell'<a> (non dentro), così il submit HTMX
+           non fa navigare il link — niente bisogno di onclick inline (CSP). #}
+        <form class="history-star-form"
+              hx-post="/e/{{ item.id }}/keep"
+              hx-target="this" hx-swap="outerHTML">
+            <input type="hidden" name="kept" value="{{ '0' if item.kept else '1' }}">
+            <button type="submit"
+                    class="history-star {% if item.kept %}history-star-active{% endif %}"
+                    title="{{ 'Nei Preferiti' if item.kept else 'Aggiungi ai Preferiti' }}"
+                    aria-label="Preferito">{% if item.kept %}&#9733;{% else %}&#9734;{% endif %}</button>
+        </form>
+    </li>
+    {% endfor %}
+</ul>
+{% else %}
+<p class="history-empty">Nessuna osservazione in questa vista.</p>
+{% endif %}
+{% endif %}

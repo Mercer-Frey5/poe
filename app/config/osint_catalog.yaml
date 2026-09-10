@@ -1,0 +1,2113 @@
+# ═══════════════════════════════════════════════════════════════════
+# POE — Catalogo OSINT
+# ═══════════════════════════════════════════════════════════════════
+#
+# File: app/config/osint_catalog.yaml
+# Versione schema: 0.1 (primo blocco, scope `person_name` + reverse image)
+#
+# Catalogo dichiarativo delle risorse OSINT che POE suggerisce
+# all'Operatore per ogni tipo di entità estratta.
+#
+# Coerenza con i principi del progetto (vedi STATUS.md):
+# - Scope persone-centrico: le risorse e gli esempi sono pensati
+#   prima per indagini su persone, secondariamente per altri tipi
+# - Offline-first: ogni risorsa dichiara il suo requisito di rete.
+#   Le risorse offline hanno priorità implicita
+# - Ridondanza investigativa: le risorse triangolanti sono
+#   esplicitamente collegate via `triangulates_with`
+# - Trasparenza: la classe di autorevolezza della fonte è dichiarata
+#   onestamente
+# - Validazione empirica: ogni voce dichiara `validation_status`
+#
+# Manutenzione (decisione Architettura, 5 maggio 2026):
+# - On-touch: durante l'uso quotidiano, una voce alla volta
+# - Spazzata sistematica: gennaio di ogni anno, revisione voci con
+#   `last_verified` più vecchio di 12 mesi
+#
+# Lingua: descrizioni in italiano, nomi tecnici e URL in lingua
+# originale.
+#
+# Caricamento: al boot del Recognizer/template engine, con loader
+# fail-fast simmetrico a tld_list.yaml e stoplist_person_name.yaml.
+# Fail-fast solo su:
+# - File mancante o malformato
+# - Campi obbligatori mancanti (cerchio 1: id, kind, name,
+#   applies_to.entity_types, validation_status)
+# - Valori che violano i vocabolari controllati definiti sotto
+# Non fail-fast: assenza di campi opzionali. Una voce minimale
+# è valida.
+# ═══════════════════════════════════════════════════════════════════
+
+
+# ───────────────────────────────────────────────────────────────────
+# Vocabolari controllati
+# ───────────────────────────────────────────────────────────────────
+# Pattern ratificato come convenzione di progetto in v0.4: i campi
+# enumerabili usano vocabolari controllati definiti in YAML, mai
+# stringhe libere. Vedi STATUS.md, sezione "Decisioni di schema".
+
+vocabularies:
+
+  entity_types:
+    # Allineato con lo schema dei tipi POE.
+    # Tipi v0.3 attuali (10):
+    - email
+    - url
+    - domain
+    - ipv4
+    - hash_md5
+    - hash_sha256
+    - cve
+    - username
+    - phone
+    - person_name
+    # Tipi v0.4 in arrivo (4):
+    - tax_id
+    - vat_id
+    - social_handle
+    - birth_date
+    # Tipi esplicitamente fuori scope POE (non aggiungere risorse
+    # che si applicano solo a questi): ipv6, asn, mac_address,
+    # bitcoin_address, ethereum_address, threat_actor, malware.
+
+  validation_status:
+    - verified           # Risorsa usata almeno una volta
+                         # dall'Operatore, confermata funzionante
+    - unverified         # Sentita nominare, candidata da provare.
+                         # Marcata chiaramente, non confonde con
+                         # quelle in uso reale
+    - to_revisit         # Era verified, ma all'ultimo uso ha mostrato
+                         # segnali di degradazione. Da rivalidare
+    - dead               # Risorsa morta o irreparabilmente cambiata.
+                         # Tenuta come storia, non proposta all'Operatore
+
+  source_authority:
+    # Classe di autorevolezza della FONTE ESTERNA. Distinto da
+    # Entity.confidence (confidenza dell'entità estratta da POE).
+    # Al dubbio, scendere di un gradino.
+    - official_registry      # Registro pubblico ufficiale
+    - aggregator_curated     # Aggregatore con curation editoriale
+    - aggregator_automated   # Aggregatore automatico (motori di ricerca,
+                             # scraper). Affidabile sul "cosa esisteva",
+                             # non sul significato
+    - crowdsourced           # Dato comunitario non verificato
+    - commercial_variable    # Servizio commerciale con qualità incerta
+                             # nel tier gratuito
+
+  network_requirement:
+    - offline                # Funziona senza rete
+    - online_browser         # Sito web aperto nel browser
+    - online_api             # API REST/GraphQL diretta (uso enricher v0.6+)
+    - hybrid                 # Tool CLI con rete (whois, Sherlock, ecc.)
+
+  privacy_impact:
+    - leak_query             # La query viene inviata a un server terzo
+                             # che vede esattamente cosa cerco
+    - leak_metadata          # Solo metadati (IP, user-agent, timestamp)
+    - none                   # Nessuna traccia esterna
+
+  cost:
+    - free
+    - free_with_account
+    - freemium
+    - paid
+
+  geographic_scope:
+    - it
+    - eu
+    - global
+    - other
+
+  resource_kind:
+    - website
+    - google_dork
+    - cli_tool
+    - api_endpoint           # Riservato per v0.6+
+
+  practical_accuracy:
+    # Efficacia pratica nel restituire risultati pertinenti per lo
+    # scope tipico dell'Operatore italiano. Decisione provvisoria,
+    # da rivalutare se serve scope-awareness più granulare.
+    - high
+    - medium
+    - low
+
+
+# ───────────────────────────────────────────────────────────────────
+# Politica di manutenzione
+# ───────────────────────────────────────────────────────────────────
+
+maintenance_policy:
+  on_touch: true
+  systematic_review_cadence_months: 12
+  systematic_review_target_month: "gennaio"
+
+
+# ───────────────────────────────────────────────────────────────────
+# Soglie di notifica (Semantica B — campi opzionali incompleti)
+# ───────────────────────────────────────────────────────────────────
+# Una voce `verified` è considerata "da rifinire" se uno qualunque
+# dei campi di `completeness_fields` è assente o vuoto.
+# Voci `unverified`, `to_revisit`, `dead` non entrano nel contatore.
+
+notification_thresholds:
+  completeness_fields:
+    - description
+    - source_authority
+    - privacy_impact
+    - cost
+    - operational_notes
+  incomplete_warning_count: 5    # Sopra questa soglia, badge visibile
+
+
+# ═══════════════════════════════════════════════════════════════════
+# Risorse — primo blocco: person_name + reverse image
+# ═══════════════════════════════════════════════════════════════════
+# Convenzione id: kebab-case con prefisso che indica `kind`:
+#   site-* per website
+#   dork-* per google_dork
+#   cli-*  per cli_tool
+
+resources:
+
+  # ═══════════════════════════════════════════════════════════════
+  # MOTORI DI RICERCA (cross-site triangolation)
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: site-google-search
+    kind: website
+    name: Google
+    applies_to:
+      entity_types: [person_name, email, username, social_handle, phone]
+    validation_status: verified
+
+    url: "https://www.google.com/"
+    description: |
+      Motore di ricerca generalista, principale piattaforma per
+      eseguire i dork-template del catalogo. Punto di accesso
+      tipico di ogni indagine su persone.
+    purpose: |
+      Pivot iniziale: data un'entità (nome, email, username), prima
+      passata su Google con o senza dork specifici per misurare
+      l'esposizione pubblica della persona.
+
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+
+    triangulates_with:
+      - site-bing-search
+      - site-duckduckgo-search
+      - site-yandex-search
+
+    operational_notes: |
+      Risultati personalizzati in base a IP, cookie, account loggato.
+      Per indagini è preferibile sessione in incognito o browser
+      dedicato senza login. La ridondanza con altri motori cattura
+      pagine che Google deindicizza per personalizzazione o policy.
+
+    last_verified: "2026-05-14"
+
+
+  - id: site-bing-search
+    kind: website
+    name: Bing
+    applies_to:
+      entity_types: [person_name, email, username, social_handle, phone]
+    validation_status: unverified
+
+    url: "https://www.bing.com/"
+    description: |
+      Motore di ricerca di Microsoft, indice proprio (non un derivato
+      di Google). Triangolatore naturale per ridondanza investigativa.
+    purpose: |
+      Eseguire gli stessi dork di Google su un indice diverso, per
+      catturare pagine indicizzate qui ma non lì.
+
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+
+    triangulates_with:
+      - site-google-search
+      - site-duckduckgo-search
+
+    operational_notes: |
+      Da provare sistematicamente quando un dork su Google dà
+      risultati zero o pochi. Operatori avanzati supportati con
+      sintassi quasi identica a Google.
+
+
+  - id: site-duckduckgo-search
+    kind: website
+    name: DuckDuckGo
+    applies_to:
+      entity_types: [person_name, email, username, social_handle, phone]
+    validation_status: unverified
+
+    url: "https://duckduckgo.com/"
+    description: |
+      Meta-motore privacy-friendly che aggrega Bing e fonti proprie,
+      senza personalizzare i risultati per utente.
+    purpose: |
+      Vista "neutra" sui risultati: stessi risultati per tutti gli
+      Operatori, utile per riproducibilità di un'indagine.
+
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: leak_metadata
+    cost: free
+    geographic_scope: global
+    practical_accuracy: medium
+
+    triangulates_with:
+      - site-google-search
+      - site-bing-search
+
+    operational_notes: |
+      Privacy_impact più mite degli altri motori (DuckDuckGo dichiara
+      no-tracking). Indice tecnico è derivato da Bing, quindi la
+      triangolazione vera è con Google e Yandex, non con Bing stesso.
+
+
+  - id: site-yandex-search
+    kind: website
+    name: Yandex
+    applies_to:
+      entity_types: [person_name, username, social_handle]
+    validation_status: unverified
+
+    url: "https://yandex.com/"
+    description: |
+      Motore di ricerca russo. Indicizzazione molto diversa dagli
+      altri tre, copertura ottima dell'area est-Europa e di pagine
+      che Google deindicizza.
+    purpose: |
+      Ultima triangolazione, da usare quando i tre motori principali
+      non hanno restituito quanto cercato, o quando l'indagine
+      riguarda persone con tracce in area russa/est-europea.
+
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: low
+
+    triangulates_with:
+      - site-google-search
+
+    operational_notes: |
+      Sovranità del dato: la query va a server russi. Per indagini
+      personali a basso rischio è accettabile; per indagini sensibili
+      va pesato. Practical_accuracy bassa per scope italiano, sale
+      a high per scope russo/est-europeo.
+
+
+  # ═══════════════════════════════════════════════════════════════
+  # GOOGLE DORK PER PERSON_NAME
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: dork-name-with-discriminator-platform
+    kind: google_dork
+    name: "Nome quotato + discriminatore + piattaforma"
+    applies_to:
+      entity_types: [person_name]
+    validation_status: verified
+
+    query_template: |
+      "{value}" "{discriminator}" site:{platform}
+    description: |
+      Cerca il nome della persona insieme a un attributo distintivo
+      (azienda, città, scuola), restringendo a una piattaforma
+      sociale o aggregatore specifico. Il template ha tre placeholder.
+    purpose: |
+      Ridurre omonimie quando il nome è comune. Triangolare nome +
+      attributo noto su piattaforma con alta densità di pubblicazione
+      identitaria (LinkedIn, Facebook, Instagram, archivi aziendali).
+
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+
+    triangulates_with:
+      - dork-name-with-location
+      - dork-name-on-linkedin
+
+    operational_notes: |
+      Pattern derivato dall'idioma reale dell'Operatore. Quotare
+      ENTRAMBI i termini ("Mario Rossi" "Acme") riduce di molto i
+      falsi positivi rispetto a quotare solo il discriminatore.
+      Placeholder attesi:
+        {value}         → nome dell'entità person_name
+        {discriminator} → attributo distintivo (organization,
+                          location, scuola, ecc.)
+        {platform}      → linkedin.com/in, facebook.com, ecc.
+
+    last_verified: "2026-05-14"
+
+
+  - id: dork-name-with-location
+    kind: google_dork
+    name: "Nome quotato + città/regione"
+    applies_to:
+      entity_types: [person_name]
+    validation_status: verified
+
+    query_template: |
+      "{value}" "{location}"
+    description: |
+      Cerca il nome insieme a una località geografica nota o
+      sospettata. Senza vincolo di piattaforma, lascia a Google
+      l'indicizzazione di archivi locali, giornali regionali, blog.
+    purpose: |
+      Rete a strascico geografica per ridurre omonimie. Funziona
+      bene quando il nome è italiano comune e l'indagine è italiana.
+
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: it
+    practical_accuracy: medium
+
+    triangulates_with:
+      - dork-name-with-discriminator-platform
+      - site-paginebianche-it
+
+    operational_notes: |
+      Per nomi rari basta il nome quotato senza località. Per cognomi
+      molto comuni (Rossi, Bianchi, Esposito) serve discriminatore
+      più specifico (via, frazione, codice postale tra virgolette).
+
+    last_verified: "2026-05-14"
+
+
+  - id: dork-name-filetype-pdf
+    kind: google_dork
+    name: "Nome quotato in documenti pubblici"
+    applies_to:
+      entity_types: [person_name]
+    validation_status: verified
+
+    query_template: |
+      "{value}" filetype:pdf
+    description: |
+      Cerca il nome dentro documenti PDF pubblici indicizzati da
+      Google. Cattura liste partecipanti, atti, comunicati,
+      presentazioni, articoli accademici, bilanci.
+    purpose: |
+      Far emergere tracce della persona in contesti istituzionali
+      o aziendali che pubblicano documenti, spesso dimenticati.
+
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+
+    triangulates_with: []
+
+    operational_notes: |
+      filetype:pdf è uno degli operatori Google più stabili nel
+      tempo (funziona dal 2003 ad oggi). Variante allargata:
+      filetype:pdf OR filetype:doc OR filetype:docx — ma diluisce,
+      meglio partire da pdf-only. Per nomi comuni aggiungere un
+      discriminatore quotato (es. città o azienda) prima del filetype.
+
+    last_verified: "2026-05-14"
+
+
+  - id: dork-name-on-linkedin
+    kind: google_dork
+    name: "Nome quotato su LinkedIn (scorciatoia)"
+    applies_to:
+      entity_types: [person_name]
+    validation_status: verified
+
+    query_template: |
+      "{value}" site:linkedin.com/in
+    description: |
+      Caso particolare di ricerca site-restricted su LinkedIn. Senza
+      discriminatore aggiuntivo, mostra tutti i profili LinkedIn con
+      quel nome.
+    purpose: |
+      Pivot rapido per misurare l'identità professionale pubblicata.
+      Spesso la prima query da lanciare quando si ha solo un nome.
+
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+
+    triangulates_with:
+      - dork-name-with-discriminator-platform
+
+    operational_notes: |
+      LinkedIn limita la visualizzazione dei profili a utenti non
+      loggati. Cliccando un risultato si vede solo il preview.
+      Per accesso completo, login richiesto (e visibile al target
+      tramite "chi ha visto il tuo profilo" se non in modalità
+      privata). Operatore deve decidere caso per caso se accettare
+      la traccia.
+
+    last_verified: "2026-05-14"
+
+
+  # ═══════════════════════════════════════════════════════════════
+  # REVERSE IMAGE SEARCH
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: site-google-lens
+    kind: website
+    name: Google Lens
+    applies_to:
+      entity_types: [person_name]
+    validation_status: verified
+
+    url: "https://lens.google.com/"
+    description: |
+      Reverse image search di Google. Eccellente per riconoscimento
+      di oggetti, luoghi, prodotti, scene. Per face matching limitato
+      per policy (Google non identifica volti).
+    purpose: |
+      Punto d'accesso più immediato per reverse image. Identificare
+      oggetti, location, indizi visivi in una foto associata alla
+      persona. Per identificare la persona stessa dal volto, usare
+      Yandex Images o tool dedicati (PimEyes, FaceCheck.ID).
+
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: medium
+
+    triangulates_with:
+      - site-yandex-images
+      - site-tineye
+
+    operational_notes: |
+      Accessibile da desktop via lens.google.com (drag-and-drop o
+      upload), nativo su mobile. Per volti restituisce "immagini
+      simili" stilisticamente, non identificazioni.
+
+    last_verified: "2026-05-14"
+
+
+  - id: site-yandex-images
+    kind: website
+    name: Yandex Images
+    applies_to:
+      entity_types: [person_name]
+    validation_status: verified
+
+    url: "https://yandex.com/images/"
+    description: |
+      Reverse image di Yandex. Storicamente il più efficace per
+      face matching reale in contesti OSINT, perché ha indicizzazione
+      meno filtrata dal punto di vista privacy occidentale.
+    purpose: |
+      Identificare una persona partendo dal volto. Quando Google
+      Lens dice "immagini simili" generiche, Yandex spesso restituisce
+      la persona reale o profili associati.
+
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+
+    triangulates_with:
+      - site-google-lens
+      - site-tineye
+
+    operational_notes: |
+      Sovranità del dato: l'immagine viene caricata su server russi.
+      Per ricerche personali a basso rischio è accettabile; per
+      indagini sensibili va pesato. La capacità di face matching è
+      reale ma non infallibile — combinare con altri tool per
+      conferma.
+
+    last_verified: "2026-05-14"
+
+
+  - id: site-tineye
+    kind: website
+    name: TinEye
+    applies_to:
+      entity_types: [person_name]
+    validation_status: verified
+
+    url: "https://tineye.com/"
+    description: |
+      Reverse image specializzato in match esatto o quasi-esatto.
+      Non fa face matching: trova istanze identiche della stessa
+      immagine sul web.
+    purpose: |
+      Smascherare profili che usano foto rubate (catfishing, fake
+      account), tracciare immagini stock spacciate per personali,
+      verificare se una foto profilo è davvero originale del soggetto.
+
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: freemium
+    geographic_scope: global
+    practical_accuracy: high
+
+    triangulates_with:
+      - site-google-lens
+      - site-yandex-images
+
+    operational_notes: |
+      Tier gratuito sufficiente per uso investigativo personale.
+      API e bulk a pagamento. Funzione complementare ai tool che
+      fanno face matching: risponde a "dove altro è apparsa questa
+      foto?" non a "chi è in questa foto?".
+
+    last_verified: "2026-05-14"
+
+
+  - id: site-pimeyes
+    kind: website
+    name: PimEyes
+    applies_to:
+      entity_types: [person_name]
+    validation_status: unverified
+
+    url: "https://pimeyes.com/"
+    description: |
+      Face search dedicato e specializzato. Carica una foto di un
+      volto, restituisce dove quel volto appare online.
+    purpose: |
+      Identificare una persona dal solo volto, quando i reverse
+      image generalisti non riescono.
+
+    source_authority: commercial_variable
+    cost: freemium
+    privacy_impact: leak_query
+    geographic_scope: global
+
+    operational_notes: |
+      Controversie GDPR ricorrenti, restrizioni periodiche delle
+      funzioni in EU. Tier gratuito 2026 quasi simbolico — mostra
+      anteprima di match ma blocca il dettaglio dei risultati dietro
+      paywall aggressivo. Da provare ma con basso entusiasmo:
+      FaceCheck.ID o Lenso.ai potrebbero essere alternative più
+      accessibili.
+
+
+  - id: site-facecheck-id
+    kind: website
+    name: FaceCheck.ID
+    applies_to:
+      entity_types: [person_name]
+    validation_status: unverified
+
+    url: "https://facecheck.id/"
+    description: |
+      Face search alternativo a PimEyes, citato in liste OSINT 2026
+      come opzione con tier gratuito più accessibile.
+    purpose: |
+      Stessa funzione di PimEyes (face → identità) ma con maggior
+      uso effettivo del tier gratuito.
+
+    operational_notes: |
+      Da provare per confronto diretto con PimEyes su un caso noto
+      all'Operatore (es. propria foto), per misurare accuracy
+      effettiva e generosità del tier gratuito.
+
+
+  - id: site-lenso-ai
+    kind: website
+    name: Lenso.ai
+    applies_to:
+      entity_types: [person_name]
+    validation_status: unverified
+
+    url: "https://lenso.ai/"
+    description: |
+      Face search emergente con focus sul free tier. Restituisce
+      match facciali e URL dove l'immagine è apparsa.
+    purpose: |
+      Triangolare con FaceCheck.ID e PimEyes per scegliere un face
+      search di riferimento dopo prove sul campo.
+
+    operational_notes: |
+      Tool relativamente nuovo (citato in articoli 2025-2026).
+      Verificare nel test che l'accuracy effettiva non sia inferiore
+      ai concorrenti più consolidati. Possibile che cambi rapidamente
+      (pricing, funzionalità).
+
+
+  # ═══════════════════════════════════════════════════════════════
+  # USERNAME PIVOT (presente in person_name perché spesso indagine
+  # parte da nome ma deve continuare su username trovato durante)
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: cli-sherlock
+    kind: cli_tool
+    name: Sherlock
+    applies_to:
+      entity_types: [username, social_handle]
+    validation_status: unverified
+
+    invocation_template: "sherlock {value}"
+    description: |
+      Tool Python che cerca un username su 400+ piattaforme via
+      richieste dirette. Output testuale con presenza/assenza
+      dell'account su ciascuna piattaforma.
+
+    cli_requirements:
+      install: "pip install sherlock-project"
+      runtime: python3
+      install_notes: |
+        Disponibile via pip. Su Windows funziona da PowerShell o cmd.
+        Su Mac/Linux nativo. Tempo medio di esecuzione: 30-90 secondi
+        per pass completo.
+
+    source_authority: aggregator_automated
+    network_requirement: hybrid
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+
+    operational_notes: |
+      Tool standard del dominio per pivot username. Da validare nel
+      proprio uso reale — tasso di falsi positivi reale, qualità
+      della lista piattaforme nel 2026 (alcune voci storiche ormai
+      stale). Alternative emerse in liste 2026: Maigret (fork
+      potenziato di Sherlock con report HTML), WhatsMyName (lista
+      curata), Blackbird (600+ siti).
+
+
+  # ═══════════════════════════════════════════════════════════════
+  # META-RISORSA DI RIFERIMENTO
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: site-osint-framework
+    kind: website
+    name: OSINT Framework
+    applies_to:
+      entity_types: [person_name, email, username, phone, social_handle]
+    validation_status: verified
+
+    url: "https://osintframework.com/"
+    description: |
+      Albero di classificazione di risorse OSINT, organizzato per
+      tipo di dato di partenza. Non un tool da eseguire, ma il
+      catalogo strutturato più completo per orientarsi.
+    purpose: |
+      Quando POE non ha una voce per il caso specifico, OSINT
+      Framework è il punto di partenza per scoprire risorse
+      potenzialmente rilevanti. Meta-risorsa: serve per ESPANDERE
+      il catalogo POE, non per sostituirlo.
+
+    source_authority: aggregator_curated
+    network_requirement: online_browser
+    privacy_impact: leak_metadata
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+
+    triangulates_with: []
+
+    operational_notes: |
+      Manutenzione comunitaria, alcune voci possono essere stale.
+      Quando si scopre qui una risorsa interessante, il flusso
+      naturale è: provarla, poi aggiungerla al catalogo POE come
+      voce dedicata (con validation_status: unverified all'inizio).
+
+    last_verified: "2026-05-14"
+
+
+  # ═══════════════════════════════════════════════════════════════
+  # THREAT-INTEL / CYBERSECURITY (v0.6 — scope allargato 29/06/2026)
+  # ═══════════════════════════════════════════════════════════════
+
+  - id: site-abuseipdb
+    kind: website
+    name: AbuseIPDB
+    applies_to:
+      entity_types: [ipv4]
+    validation_status: unverified
+
+    url: "https://www.abuseipdb.com/"
+    url_template: "https://www.abuseipdb.com/check/{value}"
+    description: |
+      Database comunitario di segnalazioni di abuso per indirizzi IP
+      (spam, brute-force, scanning, malware C2). Ogni IP ha uno
+      "abuse confidence score" calcolato dalle segnalazioni ricevute.
+    purpose: |
+      Verificare rapidamente se un IP osservato è già stato segnalato
+      da altri operatori come sorgente di attività malevola.
+
+    source_authority: crowdsourced
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+
+    triangulates_with:
+      - site-bgp-he-net
+
+    operational_notes: |
+      Il tier gratuito web (senza account) mostra lo score e le
+      ultime segnalazioni; API richiede chiave (non usata da POE:
+      solo link, nessuna integrazione automatica).
+
+    last_verified: "2026-07-05"
+
+
+  - id: site-bgp-he-net
+    kind: website
+    name: "BGP.HE.net (Hurricane Electric)"
+    applies_to:
+      entity_types: [ipv4]
+    validation_status: unverified
+
+    url: "https://bgp.he.net/"
+    url_template: "https://bgp.he.net/ip/{value}"
+    description: |
+      Toolkit BGP di Hurricane Electric. Per un IP mostra l'ASN di
+      appartenenza, il prefisso di rete (CIDR), l'organizzazione
+      titolare e i reverse DNS associati.
+    purpose: |
+      Capire a chi appartiene davvero un IP a livello di rete
+      (provider, hosting, organizzazione) oltre alla geolocalizzazione
+      già fornita dall'enrichment automatico di POE.
+
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+
+    triangulates_with:
+      - site-abuseipdb
+
+    operational_notes: |
+      Nessun account richiesto. Dati derivati direttamente dalle
+      tabelle di routing BGP pubbliche: molto affidabile per
+      l'attribuzione di rete, non dice nulla sulla reputazione.
+
+    last_verified: "2026-07-05"
+
+
+  - id: site-crtsh
+    kind: website
+    name: "crt.sh (Certificate Transparency)"
+    applies_to:
+      entity_types: [domain]
+    validation_status: unverified
+
+    url: "https://crt.sh/"
+    url_template: "https://crt.sh/?q={value}"
+    description: |
+      Motore di ricerca sui log pubblici di Certificate Transparency.
+      Per un dominio mostra tutti i certificati TLS emessi, inclusi
+      quelli per sottodomini.
+    purpose: |
+      Scoprire sottodomini e infrastruttura correlata a un dominio
+      osservato, tramite i certificati emessi nel tempo. Tecnica
+      standard di enumerazione passiva (nessuna query diretta al target).
+
+    source_authority: official_registry
+    network_requirement: online_browser
+    privacy_impact: none
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+
+    triangulates_with:
+      - site-urlscan-domain
+
+    operational_notes: |
+      Passivo al 100%: legge log CT pubblici, non tocca mai il
+      dominio target. Ottimo primo passo su un dominio sospetto
+      prima di qualunque interazione diretta.
+
+    last_verified: "2026-07-05"
+
+
+  - id: site-urlscan-domain
+    kind: website
+    name: "urlscan.io (dominio)"
+    applies_to:
+      entity_types: [domain]
+    validation_status: unverified
+
+    url: "https://urlscan.io/"
+    url_template: "https://urlscan.io/domain/{value}"
+    description: |
+      Motore di scansione URL/dominio: mostra scan storici pubblici
+      con screenshot, richieste di rete, certificati, e IP di hosting.
+    purpose: |
+      Vedere se il dominio è già stato scansionato da altri (screenshot
+      storico della pagina, infrastruttura di hosting, comportamento
+      di rete) senza doverlo visitare direttamente.
+
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+
+    triangulates_with:
+      - site-crtsh
+      - site-urlscan-url
+
+    operational_notes: |
+      Se il dominio non ha scan pubblici pregressi, la pagina è vuota:
+      da qui si può anche sottomettere una nuova scansione (consapevole
+      che la sottomissione rende visibile a terzi che POE lo ha guardato).
+
+    last_verified: "2026-07-05"
+
+
+  - id: site-urlscan-url
+    kind: website
+    name: "urlscan.io (ricerca URL)"
+    applies_to:
+      entity_types: [url]
+    validation_status: unverified
+
+    url: "https://urlscan.io/"
+    url_template: "https://urlscan.io/search/#{value}"
+    description: |
+      Ricerca full-text sugli scan storici di urlscan.io per un URL
+      specifico (non solo il dominio).
+    purpose: |
+      Verificare se quell'URL esatto (non solo il dominio) è già stato
+      osservato/scansionato altrove, con screenshot e comportamento
+      di rete già registrati.
+
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: medium
+
+    triangulates_with:
+      - site-urlscan-domain
+      - site-virustotal-search
+
+    operational_notes: |
+      Ricerca testuale: URL con querystring lunghe possono dare pochi
+      match esatti. Se vuoto, provare la vista dominio (site-urlscan-domain).
+
+    last_verified: "2026-07-05"
+
+
+  - id: site-virustotal-search
+    kind: website
+    name: VirusTotal
+    applies_to:
+      entity_types: [url, hash_md5, hash_sha256, ipv4, domain]
+    validation_status: unverified
+
+    url: "https://www.virustotal.com/"
+    url_template: "https://www.virustotal.com/gui/search/{value}"
+    description: |
+      Aggregatore di 70+ motori antivirus e sandbox. Accetta in ricerca
+      URL, hash di file, IP o dominio e mostra il verdetto aggregato
+      di tutti i motori.
+    purpose: |
+      Verdetto multi-motore su un URL, hash, IP o dominio sospetto:
+      quanti antivirus/sandbox lo classificano come malevolo, con che
+      nome di famiglia malware (file), o AS/registrar/DNS (IP/dominio).
+
+    source_authority: aggregator_curated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+
+    triangulates_with:
+      - site-malwarebazaar-hash
+
+    operational_notes: |
+      Tier gratuito web sufficiente per lookup singoli. Se l'hash/URL
+      non è mai stato visto da VT, la pagina risulta vuota (non
+      significa "pulito", solo "mai analizzato").
+
+    last_verified: "2026-07-05"
+
+
+  - id: site-malwarebazaar-hash
+    kind: website
+    name: "MalwareBazaar (abuse.ch)"
+    applies_to:
+      entity_types: [hash_sha256]
+    validation_status: unverified
+
+    url: "https://bazaar.abuse.ch/"
+    url_template: "https://bazaar.abuse.ch/browse.php?search=sha256%3A{value}"
+    description: |
+      Repository pubblico di campioni malware di abuse.ch, ricercabile
+      per hash SHA256. Stessa organizzazione dei feed di reputation
+      già integrati in POE (ThreatFox/URLhaus/Feodo).
+    purpose: |
+      Verificare se un hash SHA256 osservato corrisponde a un campione
+      malware già catalogato, con famiglia e data di prima segnalazione.
+
+    source_authority: aggregator_curated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+
+    triangulates_with:
+      - site-virustotal-search
+
+    operational_notes: |
+      Stessa fonte (abuse.ch) dei feed di reputation automatica di
+      POE: se l'hash è già nei feed locali il badge reputation lo
+      segnala prima ancora di aprire questo link.
+
+    last_verified: "2026-07-05"
+
+
+  - id: site-nvd-nist
+    kind: website
+    name: "NVD (National Vulnerability Database)"
+    applies_to:
+      entity_types: [cve]
+    validation_status: unverified
+
+    url: "https://nvd.nist.gov/"
+    url_template: "https://nvd.nist.gov/vuln/detail/{value}"
+    description: |
+      Database ufficiale statunitense (NIST) delle vulnerabilità CVE:
+      score CVSS, descrizione, prodotti/versioni affetti, riferimenti
+      a patch.
+    purpose: |
+      Fonte primaria e ufficiale per capire la gravità e l'impatto
+      reale di una CVE osservata in un testo o log.
+
+    source_authority: official_registry
+    network_requirement: online_browser
+    privacy_impact: none
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+
+    triangulates_with:
+      - site-mitre-cve
+
+    operational_notes: |
+      Fonte autorevole di riferimento; in caso di CVE recentissima
+      può avere il record ancora in stato "awaiting analysis" (score
+      CVSS non ancora assegnato).
+
+    last_verified: "2026-07-05"
+
+
+  - id: site-shodan
+    kind: website
+    name: Shodan
+    applies_to:
+      entity_types: [ipv4]
+    validation_status: unverified
+
+    url: "https://www.shodan.io/"
+    url_template: "https://www.shodan.io/host/{value}"
+    description: |
+      Motore di scansione che indicizza dispositivi e servizi esposti su
+      Internet. Per un IP mostra porte aperte, banner dei servizi,
+      organizzazione e vulnerabilità note (CVE) associate.
+    purpose: |
+      Capire quali servizi sono esposti pubblicamente su un IP osservato,
+      ed eventuali vulnerabilità note, oltre alla sola reputazione/
+      geolocalizzazione già fornita dall'enrichment automatico di POE.
+
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: freemium
+    geographic_scope: global
+    practical_accuracy: high
+
+    triangulates_with:
+      - site-abuseipdb
+      - site-bgp-he-net
+
+    operational_notes: |
+      Keyless in POE: il risultato appare sempre nella scheda IOC via
+      InternetDB (gratuito, senza key: porte, CVE, tag). SHODAN_API_KEY
+      (pagina Servizi & API) è opzionale e aggiunge i dati host più
+      ricchi (org/ISP/OS) quando il piano dell'account lo consente.
+
+    last_verified: "2026-07-11"
+
+
+  - id: site-mitre-cve
+    kind: website
+    name: MITRE CVE
+    applies_to:
+      entity_types: [cve]
+    validation_status: unverified
+
+    url: "https://cve.mitre.org/"
+    url_template: "https://cve.mitre.org/cgi-bin/cvename.cgi?name={value}"
+    description: |
+      Il CVE è un programma gestito da MITRE: questa è la fonte
+      "originaria" dell'identificatore, spesso più scarna della NVD
+      ma autorevole sulla sola esistenza/descrizione della CVE.
+    purpose: |
+      Triangolare con NVD quando serve la descrizione ufficiale
+      originaria, o quando NVD non ha ancora indicizzato una CVE
+      appena assegnata.
+
+    source_authority: official_registry
+    network_requirement: online_browser
+    privacy_impact: none
+    cost: free
+    geographic_scope: global
+    practical_accuracy: medium
+
+    triangulates_with:
+      - site-nvd-nist
+
+    operational_notes: |
+      Redirect automatico spesso porta comunque a NVD per il
+      dettaglio tecnico: utile soprattutto per CVE fresche non ancora
+      arricchite da NVD.
+
+    last_verified: "2026-07-05"
+
+
+  - id: site-urlscan-ip
+    kind: website
+    name: "urlscan.io (IP)"
+    applies_to:
+      entity_types: [ipv4]
+    validation_status: unverified
+
+    url: "https://urlscan.io/"
+    url_template: "https://urlscan.io/search/#ip:{value}"
+    description: |
+      Ricerca negli scan pubblici di urlscan.io per IP: quali pagine/domini
+      sono stati serviti da questo indirizzo (hosting condiviso, siti
+      ospitati, comportamento di rete storico).
+    purpose: |
+      Pivotare da un IP ai domini/URL che ha ospitato, senza visitarli:
+      infrastruttura condivisa e siti storicamente serviti dall'IP.
+
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+
+    triangulates_with:
+      - site-shodan
+      - site-abuseipdb
+
+    operational_notes: |
+      Keyless (solo endpoint di ricerca). Se l'IP non ha scan pubblici la
+      lista è vuota (non è un errore).
+
+    last_verified: "2026-07-12"
+
+
+  - id: site-gravatar
+    kind: website
+    name: Gravatar
+    applies_to:
+      entity_types: [email]
+    validation_status: unverified
+
+    url: "https://gravatar.com/"
+    url_template: "https://gravatar.com/{value}"
+    description: |
+      Profilo pubblico Gravatar associato a un'email (via hash MD5):
+      espone SOLO ciò che il titolare ha reso pubblico — nome
+      visualizzato e account social collegati.
+    purpose: |
+      Collegare un'email a un'identità pubblica e ai suoi profili social
+      dichiarati, quando il titolare ha un profilo Gravatar.
+
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: none
+    cost: free
+    geographic_scope: global
+    practical_accuracy: medium
+
+    triangulates_with:
+      - site-xposedornot
+
+    operational_notes: |
+      Keyless. Molte email non hanno un profilo Gravatar (404 = nessun
+      profilo, non un errore). Solo dati pubblici volontari, nessun leak.
+
+    last_verified: "2026-07-12"
+
+
+  - id: site-xposedornot
+    kind: website
+    name: XposedOrNot
+    applies_to:
+      entity_types: [email]
+    validation_status: unverified
+
+    url: "https://xposedornot.com/"
+    url_template: "https://xposedornot.com/email/{value}"
+    description: |
+      Verifica se un'email compare in data-breach pubblici noti
+      (archivio in stile Have I Been Pwned), con l'elenco delle violazioni.
+    purpose: |
+      Uso difensivo/OSINT: capire l'esposizione di un'email in breach
+      pubblici, per valutare rischio credenziali e priorità di indagine.
+
+    source_authority: aggregator_curated
+    network_requirement: online_browser
+    privacy_impact: none
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+
+    triangulates_with:
+      - site-gravatar
+
+    operational_notes: |
+      Keyless. 404 = nessun breach noto per quell'email (non un errore).
+      Solo aggregazione di breach già pubblici.
+
+    last_verified: "2026-07-12"
+
+
+  - id: site-phone-info
+    kind: website
+    name: "Dati numero (locale)"
+    applies_to:
+      entity_types: [phone]
+    validation_status: unverified
+
+    url: "https://github.com/daviddrysdale/python-phonenumbers"
+    url_template: "https://github.com/daviddrysdale/python-phonenumbers"
+    description: |
+      Metadati di un numero di telefono calcolati IN LOCALE (offline, nessuna
+      rete): validità, regione geografica, operatore, tipo di linea, prefisso
+      paese — tramite la libreria phonenumbers.
+    purpose: |
+      Inquadrare rapidamente un numero (paese, operatore, mobile/fisso/VoIP)
+      senza interrogare servizi esterni né esporre il numero a terzi.
+
+    source_authority: local_heuristic
+    network_requirement: offline
+    privacy_impact: none
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+
+    triangulates_with: []
+
+    operational_notes: |
+      Calcolo locale (nessuna chiamata di rete, nessun leak). Richiede il
+      prefisso internazionale (es. +39) per un risultato affidabile.
+
+    last_verified: "2026-07-12"
+
+
+  # ── Link a profili per username/social handle (solo link, versione passiva
+  #    e sicura dell'enumerazione stile Sherlock: nessuna scansione attiva,
+  #    solo URL da aprire — finiscono nel bundle Browser). ──
+  - id: site-github-user
+    kind: website
+    name: "GitHub (profilo)"
+    applies_to:
+      entity_types: [username, social_handle]
+    validation_status: unverified
+    url: "https://github.com/"
+    url_template: "https://github.com/{value}"
+    description: |
+      Profilo GitHub per un username: repository pubblici, attività,
+      bio, spesso collega altri account e un sito personale.
+    purpose: |
+      Verificare se lo username esiste su GitHub e cosa rivela il profilo
+      pubblico (progetti, email nei commit, link esterni).
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: none
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+    triangulates_with: [site-keybase-user]
+    operational_notes: |
+      Solo costruzione dell'URL: aprire il link mostra se il profilo esiste.
+    last_verified: "2026-07-12"
+
+
+  - id: site-x-user
+    kind: website
+    name: "X / Twitter (profilo)"
+    applies_to:
+      entity_types: [username, social_handle]
+    validation_status: unverified
+    url: "https://x.com/"
+    url_template: "https://x.com/{value}"
+    description: |
+      Profilo X (Twitter) per un handle: bio, post pubblici, follower,
+      link nel profilo.
+    purpose: |
+      Verificare l'esistenza dell'handle su X e il contenuto pubblico del
+      profilo.
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: none
+    cost: free
+    geographic_scope: global
+    practical_accuracy: medium
+    triangulates_with: []
+    operational_notes: |
+      Solo link. X limita la visibilità senza login per alcuni profili.
+    last_verified: "2026-07-12"
+
+
+  - id: site-instagram-user
+    kind: website
+    name: "Instagram (profilo)"
+    applies_to:
+      entity_types: [username, social_handle]
+    validation_status: unverified
+    url: "https://www.instagram.com/"
+    url_template: "https://www.instagram.com/{value}/"
+    description: |
+      Profilo Instagram per un username: foto pubbliche, bio, link esterni.
+    purpose: |
+      Verificare l'esistenza dello username su Instagram e il profilo pubblico.
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: none
+    cost: free
+    geographic_scope: global
+    practical_accuracy: medium
+    triangulates_with: []
+    operational_notes: |
+      Solo link. I profili privati mostrano solo bio e avatar senza login.
+    last_verified: "2026-07-12"
+
+
+  - id: site-reddit-user
+    kind: website
+    name: "Reddit (profilo)"
+    applies_to:
+      entity_types: [username, social_handle]
+    validation_status: unverified
+    url: "https://www.reddit.com/user/"
+    url_template: "https://www.reddit.com/user/{value}"
+    description: |
+      Profilo Reddit per un username: post e commenti pubblici, subreddit
+      frequentati, cronologia di attività.
+    purpose: |
+      Verificare l'esistenza dello username su Reddit e profilare interessi
+      e attività dai contenuti pubblici.
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: none
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+    triangulates_with: []
+    operational_notes: |
+      Solo link. Aggiungere ".json" all'URL espone gli stessi dati in JSON.
+    last_verified: "2026-07-12"
+
+
+  - id: site-telegram-user
+    kind: website
+    name: "Telegram (profilo)"
+    applies_to:
+      entity_types: [username, social_handle]
+    validation_status: unverified
+    url: "https://t.me/"
+    url_template: "https://t.me/{value}"
+    description: |
+      Pagina pubblica Telegram per un username: nome, bio, e se è un canale
+      il numero di iscritti.
+    purpose: |
+      Verificare l'esistenza dello username su Telegram (utente o canale).
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: none
+    cost: free
+    geographic_scope: global
+    practical_accuracy: medium
+    triangulates_with: []
+    operational_notes: |
+      Solo link. La pagina t.me mostra dati pubblici anche senza l'app.
+    last_verified: "2026-07-12"
+
+
+  - id: site-keybase-user
+    kind: website
+    name: "Keybase (profilo)"
+    applies_to:
+      entity_types: [username, social_handle]
+    validation_status: unverified
+    url: "https://keybase.io/"
+    url_template: "https://keybase.io/{value}"
+    description: |
+      Profilo Keybase per un username: chiavi crittografiche pubbliche e
+      account verificati collegati (Twitter, GitHub, Reddit, dominio…).
+    purpose: |
+      Collegare uno username a identità verificate crittograficamente su
+      più piattaforme — pivot forte tra account.
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: none
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+    triangulates_with: [site-github-user]
+    operational_notes: |
+      Solo link. Le verifiche Keybase sono crittografiche: alta affidabilità
+      quando presenti.
+    last_verified: "2026-07-12"
+
+
+  # ── Threat-intel a key gratuita (lookup live con ABUSECH/OTX/HUNTER_API_KEY) ──
+  - id: site-threatfox
+    kind: website
+    name: ThreatFox
+    applies_to:
+      entity_types: [ipv4, domain, url, hash_md5, hash_sha256]
+    validation_status: unverified
+
+    url: "https://threatfox.abuse.ch/"
+    url_template: "https://threatfox.abuse.ch/browse.php?search=ioc%3A{value}"
+    description: |
+      Database abuse.ch di IOC attribuiti a famiglie malware: per un IP,
+      dominio, URL o hash indica se è un indicatore noto e a quale
+      malware/botnet è collegato, con livello di confidenza.
+    purpose: |
+      Attribuire rapidamente un IOC a una famiglia malware nota e valutarne
+      la confidenza, integrando reputation e sandbox.
+
+    source_authority: aggregator_curated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+
+    triangulates_with:
+      - site-urlhaus
+      - site-virustotal-search
+
+    operational_notes: |
+      Con ABUSECH_API_KEY (gratuita su auth.abuse.ch, pagina Servizi & API)
+      il risultato appare nella scheda IOC; la stessa key abilita URLhaus.
+
+    last_verified: "2026-07-12"
+
+
+  - id: site-urlhaus
+    kind: website
+    name: URLhaus
+    applies_to:
+      entity_types: [url, domain, ipv4]
+    validation_status: unverified
+
+    url: "https://urlhaus.abuse.ch/"
+    url_template: "https://urlhaus.abuse.ch/browse.php?search={value}"
+    description: |
+      Database abuse.ch di URL malevoli (distribuzione malware): per un host
+      (dominio/IP) elenca le URL malevole note servite, con stato e tag; per
+      una URL specifica il verdetto e il tipo di minaccia.
+    purpose: |
+      Capire se un host/URL è coinvolto nella distribuzione di malware, con
+      lista delle URL note e blacklist di appartenenza.
+
+    source_authority: aggregator_curated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+
+    triangulates_with:
+      - site-threatfox
+
+    operational_notes: |
+      Stessa ABUSECH_API_KEY di ThreatFox. Nessuna URL nota = risultato
+      valido "pulito", non un errore.
+
+    last_verified: "2026-07-12"
+
+
+  - id: site-otx
+    kind: website
+    name: AlienVault OTX
+    applies_to:
+      entity_types: [ipv4, domain, url, hash_md5, hash_sha256, cve]
+    validation_status: unverified
+
+    url: "https://otx.alienvault.com/"
+    url_template: "https://otx.alienvault.com/indicator/generic/{value}"
+    description: |
+      Open Threat Exchange: pulse di threat-intelligence condivisi dalla
+      community per qualsiasi IOC (IP, dominio, URL, hash, CVE) — chi ha
+      segnalato l'indicatore, in quali campagne, con famiglie malware e tag.
+    purpose: |
+      Vedere se un IOC è già stato osservato e segnalato dalla community
+      globale, e in quale contesto di minaccia, con una sola chiave per
+      tutti i tipi.
+
+    source_authority: aggregator_curated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+
+    triangulates_with:
+      - site-threatfox
+      - site-virustotal-search
+
+    operational_notes: |
+      Con OTX_API_KEY (gratuita, pagina Servizi & API) il risultato appare
+      nella scheda IOC. Una sola key copre IP/dominio/URL/hash/CVE.
+
+    last_verified: "2026-07-12"
+
+
+  - id: site-hunter-verify
+    kind: website
+    name: "Hunter.io (verifica email)"
+    applies_to:
+      entity_types: [email]
+    validation_status: unverified
+
+    url: "https://hunter.io/"
+    url_template: "https://hunter.io/verify/{value}"
+    description: |
+      Verifica di recapitabilità di un'email: valida/rischiosa/non
+      recapitabile, se è un indirizzo usa-e-getta o webmail, con uno score
+      di affidabilità.
+    purpose: |
+      Valutare se un'email è reale e attiva (utile per triage di contatti,
+      phishing, lead), distinguendo caselle usa-e-getta e webmail.
+
+    source_authority: aggregator_automated
+    network_requirement: online_browser
+    privacy_impact: leak_query
+    cost: freemium
+    geographic_scope: global
+    practical_accuracy: medium
+
+    triangulates_with:
+      - site-gravatar
+      - site-xposedornot
+
+    operational_notes: |
+      Con HUNTER_API_KEY (gratuita, 25 verifiche/mese) il risultato appare
+      nella scheda IOC. Endpoint di sola verifica, non espone dati di terzi.
+
+    last_verified: "2026-07-12"
+
+
+  # ── Codice Fiscale italiano: reverse deterministico LOCALE (offline). Decodifica
+  #    sesso, data di nascita, comune e validità del check digit senza rete. ──
+  - id: site-cf
+    kind: website
+    name: "Codice Fiscale (locale)"
+    applies_to:
+      entity_types: [tax_id]
+    validation_status: unverified
+
+    url: "https://it.wikipedia.org/wiki/Codice_fiscale"
+    url_template: "https://it.wikipedia.org/wiki/Codice_fiscale"
+    description: |
+      Reverse IN LOCALE (offline, nessuna rete) di un Codice Fiscale italiano:
+      sesso, data di nascita, comune (o codice catastale Belfiore) e validità
+      del carattere di controllo — calcolo deterministico dai 16 caratteri.
+    purpose: |
+      Estrarre in chiaro le informazioni che il CF codifica (nato/a il, dove,
+      sesso) e verificarne la coerenza del check digit, senza esporre il dato
+      a servizi terzi.
+
+    source_authority: local_heuristic
+    network_requirement: offline
+    privacy_impact: none
+    cost: free
+    geographic_scope: national
+    practical_accuracy: high
+
+    triangulates_with: []
+
+    operational_notes: |
+      Calcolo locale (nessuna chiamata di rete, nessun leak). Il secolo non è
+      codificato nel CF: la data usa un'euristica 1900/2000. Il comune è
+      risolto da una tabella Belfiore locale (parziale).
+
+    last_verified: "2026-07-14"
+
+
+  # ── Google Dork mirati per tipo di IOC: costruzione LOCALE di query/URL
+  #    (nessuna rete), l'utente apre i link su Google. Un'entry per tipo. ──
+  - id: site-dorks-email
+    kind: website
+    name: "Google Dork (email)"
+    applies_to:
+      entity_types: [email]
+    validation_status: unverified
+    url: "https://www.google.com/"
+    url_template: "https://www.google.com/search?q={value}"
+    description: |
+      Set di Google Dork mirati per un'email: menzioni esatte, leak/paste,
+      documenti indicizzati, profili social — costruiti IN LOCALE (solo URL).
+    purpose: |
+      Trovare rapidamente dove un'email compare online (leak, documenti,
+      social) con query pronte, senza interrogare servizi esterni.
+    source_authority: local_heuristic
+    network_requirement: offline
+    privacy_impact: none
+    cost: free
+    geographic_scope: global
+    practical_accuracy: medium
+    triangulates_with: [site-hunter-verify, site-xposedornot]
+    operational_notes: |
+      Solo costruzione di query e URL (nessuna chiamata di rete). Ogni dork è
+      un link Google già pronto: la ricerca parte quando l'utente lo apre.
+    last_verified: "2026-07-14"
+
+
+  - id: site-dorks-person
+    kind: website
+    name: "Google Dork (persona)"
+    applies_to:
+      entity_types: [person_name]
+    validation_status: unverified
+    url: "https://www.google.com/"
+    url_template: "https://www.google.com/search?q={value}"
+    description: |
+      Google Dork mirati per un nome di persona: profili social, CV/curriculum,
+      contatti — costruiti IN LOCALE (solo URL, nessuna rete).
+    purpose: |
+      Inquadrare la presenza online di una persona (social, documenti,
+      recapiti) con query pronte, senza servizi esterni.
+    source_authority: local_heuristic
+    network_requirement: offline
+    privacy_impact: none
+    cost: free
+    geographic_scope: global
+    practical_accuracy: low
+    triangulates_with: []
+    operational_notes: |
+      Solo costruzione di query e URL (nessuna rete). Un nome è ambiguo:
+      i dork vanno affinati con un discriminatore (città, azienda).
+    last_verified: "2026-07-14"
+
+
+  - id: site-dorks-username
+    kind: website
+    name: "Google Dork (username)"
+    applies_to:
+      entity_types: [username]
+    validation_status: unverified
+    url: "https://www.google.com/"
+    url_template: "https://www.google.com/search?q={value}"
+    description: |
+      Google Dork mirati per uno username: piattaforme note, menzioni, forum e
+      paste — costruiti IN LOCALE (solo URL, nessuna rete).
+    purpose: |
+      Trovare dove uno username è usato (piattaforme, forum, paste) con query
+      pronte, complementari all'enumerazione passiva dei profili.
+    source_authority: local_heuristic
+    network_requirement: offline
+    privacy_impact: none
+    cost: free
+    geographic_scope: global
+    practical_accuracy: medium
+    triangulates_with: [site-github-user, cli-sherlock]
+    operational_notes: |
+      Solo costruzione di query e URL (nessuna rete). Ogni dork apre una
+      ricerca Google mirata.
+    last_verified: "2026-07-14"
+
+
+  - id: site-dorks-social
+    kind: website
+    name: "Google Dork (social handle)"
+    applies_to:
+      entity_types: [social_handle]
+    validation_status: unverified
+    url: "https://www.google.com/"
+    url_template: "https://www.google.com/search?q={value}"
+    description: |
+      Google Dork mirati per un social handle: piattaforme principali e
+      menzioni — costruiti IN LOCALE (solo URL, nessuna rete).
+    purpose: |
+      Trovare l'handle sulle piattaforme social e le sue menzioni con query
+      pronte, senza scansione attiva.
+    source_authority: local_heuristic
+    network_requirement: offline
+    privacy_impact: none
+    cost: free
+    geographic_scope: global
+    practical_accuracy: medium
+    triangulates_with: [site-x-user, site-instagram-user]
+    operational_notes: |
+      Solo costruzione di query e URL (nessuna rete). Ogni dork apre una
+      ricerca Google mirata.
+    last_verified: "2026-07-14"
+
+
+  - id: site-dorks-phone
+    kind: website
+    name: "Google Dork (telefono)"
+    applies_to:
+      entity_types: [phone]
+    validation_status: unverified
+    url: "https://www.google.com/"
+    url_template: "https://www.google.com/search?q={value}"
+    description: |
+      Google Dork mirati per un numero di telefono: menzioni esatte, annunci e
+      social — costruiti IN LOCALE (solo URL, nessuna rete).
+    purpose: |
+      Trovare dove un numero compare online (annunci, marketplace, social) con
+      query pronte, senza interrogare servizi esterni.
+    source_authority: local_heuristic
+    network_requirement: offline
+    privacy_impact: none
+    cost: free
+    geographic_scope: global
+    practical_accuracy: low
+    triangulates_with: [site-phone-info]
+    operational_notes: |
+      Solo costruzione di query e URL (nessuna rete). Un numero rende meglio
+      cercato in più formati (con/senza prefisso, spazi).
+    last_verified: "2026-07-14"
+
+
+  - id: site-dorks-domain
+    kind: website
+    name: "Google Dork (dominio)"
+    applies_to:
+      entity_types: [domain]
+    validation_status: unverified
+    url: "https://www.google.com/"
+    url_template: "https://www.google.com/search?q={value}"
+    description: |
+      Google Dork mirati per un dominio: pagine indicizzate, file esposti,
+      pannelli/login e menzioni esterne — costruiti IN LOCALE (solo URL).
+    purpose: |
+      Mappare la superficie indicizzata di un dominio (file sensibili, admin
+      panel, index of) con query pronte, senza scansione attiva.
+    source_authority: local_heuristic
+    network_requirement: offline
+    privacy_impact: none
+    cost: free
+    geographic_scope: global
+    practical_accuracy: medium
+    triangulates_with: [site-crtsh, site-urlscan-domain]
+    operational_notes: |
+      Solo costruzione di query e URL (nessuna rete). Ricognizione passiva:
+      nessuna richiesta al dominio target, solo query all'indice di Google.
+    last_verified: "2026-07-14"
+
+
+  - id: site-dorks-ipv4
+    kind: website
+    name: "Google Dork (IP)"
+    applies_to:
+      entity_types: [ipv4]
+    validation_status: unverified
+    url: "https://www.google.com/"
+    url_template: "https://www.google.com/search?q={value}"
+    description: |
+      Google Dork mirati per un indirizzo IP: menzioni esatte e leak/paste —
+      costruiti IN LOCALE (solo URL, nessuna rete).
+    purpose: |
+      Trovare dove un IP è citato online (paste, repository, blocklist) con
+      query pronte, a complemento della threat-intel.
+    source_authority: local_heuristic
+    network_requirement: offline
+    privacy_impact: none
+    cost: free
+    geographic_scope: global
+    practical_accuracy: low
+    triangulates_with: [site-abuseipdb, site-threatfox]
+    operational_notes: |
+      Solo costruzione di query e URL (nessuna rete). Ricognizione passiva:
+      nessun contatto con l'IP target.
+    last_verified: "2026-07-14"
+
+
+  # ── Batch persone (Wave A): fonti live keyless per email/username. Tutte
+  #    inviano l'IOC a un servizio terzo (leak_query), auto-run, senza key. ──
+  - id: site-emailrep
+    kind: website
+    name: "EmailRep (reputation email)"
+    applies_to:
+      entity_types: [email]
+    validation_status: unverified
+    url: "https://emailrep.io/"
+    url_template: "https://emailrep.io/{value}"
+    description: |
+      Reputation aggregata di un'email (EmailRep.io): sospetta/malevola,
+      credenziali trapelate, presenza in data-breach, profili social collegati,
+      se usa-e-getta/webmail, recapitabilità.
+    purpose: |
+      Triage rapido di un'email (rischio, esposizione, profili) in una sola
+      chiamata, senza API key obbligatoria.
+    source_authority: aggregator_automated
+    network_requirement: online_api
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: medium
+    triangulates_with: [site-xposedornot, site-hunter-verify]
+    operational_notes: |
+      Keyless (rate limit basso). EMAILREP_API_KEY opzionale alza il limite.
+      L'email viene inviata a EmailRep.io (leak_query).
+    last_verified: "2026-07-19"
+
+
+  - id: site-hudsonrock-email
+    kind: website
+    name: "Hudson Rock (infostealer, email)"
+    applies_to:
+      entity_types: [email]
+    validation_status: unverified
+    url: "https://www.hudsonrock.com/"
+    url_template: "https://www.hudsonrock.com/"
+    description: |
+      Verifica se un'email compare in infezioni da infostealer (credenziali
+      rubate da malware): famiglia dello stealer e data. Servizio gratuito
+      Hudson Rock Cavalier.
+    purpose: |
+      Capire se un account è stato esposto da malware infostealer — segnale
+      forte di compromissione non coperto dai breach classici.
+    source_authority: aggregator_automated
+    network_requirement: online_api
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: medium
+    triangulates_with: [site-xposedornot, site-emailrep]
+    operational_notes: |
+      Keyless. L'email viene inviata a Hudson Rock (leak_query). Conteggio
+      credenziali, non plaintext.
+    last_verified: "2026-07-19"
+
+
+  - id: site-hudsonrock-username
+    kind: website
+    name: "Hudson Rock (infostealer, username)"
+    applies_to:
+      entity_types: [username, social_handle]
+    validation_status: unverified
+    url: "https://www.hudsonrock.com/"
+    url_template: "https://www.hudsonrock.com/"
+    description: |
+      Verifica se uno username compare in infezioni da infostealer (credenziali
+      rubate da malware): famiglia dello stealer e data. Servizio gratuito
+      Hudson Rock Cavalier.
+    purpose: |
+      Capire se un account (per username) è stato esposto da malware
+      infostealer — segnale forte di compromissione.
+    source_authority: aggregator_automated
+    network_requirement: online_api
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: medium
+    triangulates_with: [site-hudsonrock-email]
+    operational_notes: |
+      Keyless. Lo username viene inviato a Hudson Rock (leak_query). Conteggio
+      credenziali, non plaintext.
+    last_verified: "2026-07-19"
+
+
+  - id: site-github-api
+    kind: website
+    name: "GitHub (profilo, live)"
+    applies_to:
+      entity_types: [username, social_handle]
+    validation_status: unverified
+    url: "https://github.com/"
+    url_template: "https://github.com/{value}"
+    description: |
+      Profilo pubblico GitHub via API: nome reale, azienda, blog, twitter,
+      email (se pubblica nei commit), n° repo, follower, data iscrizione.
+    purpose: |
+      Ottenere dati reali del profilo (non solo il link) per correlare uno
+      username a identità, contatti e altri account.
+    source_authority: aggregator_automated
+    network_requirement: online_api
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+    triangulates_with: [site-keybase-api, site-gitlab-api]
+    operational_notes: |
+      Keyless (60 richieste/ora per IP). Solo dati pubblici. Lo username viene
+      inviato a GitHub (leak_query).
+    last_verified: "2026-07-19"
+
+
+  - id: site-keybase-api
+    kind: website
+    name: "Keybase (identità, live)"
+    applies_to:
+      entity_types: [username, social_handle]
+    validation_status: unverified
+    url: "https://keybase.io/"
+    url_template: "https://keybase.io/{value}"
+    description: |
+      Prove d'identità cross-piattaforma di uno username via API Keybase:
+      account collegati e verificati (twitter/github/reddit/hackernews/siti) e
+      chiavi PGP pubbliche.
+    purpose: |
+      Correlare più account allo stesso soggetto con prove crittografiche —
+      il grafo d'identità più affidabile per uno username.
+    source_authority: aggregator_automated
+    network_requirement: online_api
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: high
+    triangulates_with: [site-github-api, site-reddit-api]
+    operational_notes: |
+      Keyless. Solo profili pubblici Keybase. Lo username viene inviato a
+      Keybase (leak_query).
+    last_verified: "2026-07-19"
+
+
+  - id: site-gitlab-api
+    kind: website
+    name: "GitLab (profilo, live)"
+    applies_to:
+      entity_types: [username, social_handle]
+    validation_status: unverified
+    url: "https://gitlab.com/"
+    url_template: "https://gitlab.com/{value}"
+    description: |
+      Profilo pubblico GitLab.com via API: nome, bio, località, sito, twitter,
+      linkedin, data iscrizione.
+    purpose: |
+      Dati reali del profilo GitLab per correlare uno username a identità e
+      link esterni.
+    source_authority: aggregator_automated
+    network_requirement: online_api
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: medium
+    triangulates_with: [site-github-api, site-keybase-api]
+    operational_notes: |
+      Keyless. Solo dati pubblici. Lo username viene inviato a GitLab
+      (leak_query).
+    last_verified: "2026-07-19"
+
+
+  - id: site-reddit-api
+    kind: website
+    name: "Reddit (account, live)"
+    applies_to:
+      entity_types: [username, social_handle]
+    validation_status: unverified
+    url: "https://www.reddit.com/"
+    url_template: "https://www.reddit.com/user/{value}"
+    description: |
+      Metadati dell'account Reddit via about.json: età dell'account (data
+      iscrizione), karma post/commenti, verificato, moderatore.
+    purpose: |
+      Valutare anzianità e attività di un account Reddit (segnale di reale vs
+      usa-e-getta) partendo dallo username.
+    source_authority: aggregator_automated
+    network_requirement: online_api
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: medium
+    triangulates_with: [site-keybase-api]
+    operational_notes: |
+      Keyless (User-Agent obbligatorio). Solo dati pubblici. Lo username viene
+      inviato a Reddit (leak_query).
+    last_verified: "2026-07-19"
+
+
+  # ── Batch persone (Wave B): fonti live key-gated per email/telefono.
+  #    Compaiono solo con la relativa API key configurata (.env). ──
+  # (HIBP breach/paste rimosse: unico servizio senza free tier — solo a
+  #    pagamento, ~$4/mese — eliminato su richiesta esplicita.)
+  - id: site-ipqs-email
+    kind: website
+    name: "IPQualityScore (fraud score email)"
+    applies_to:
+      entity_types: [email]
+    validation_status: unverified
+    url: "https://www.ipqualityscore.com/"
+    url_template: "https://www.ipqualityscore.com/"
+    description: |
+      Fraud score e reputazione di un'email (IPQualityScore): validità,
+      usa-e-getta, recapitabilità, abuso recente, se trapelata, prima
+      apparizione nota.
+    purpose: |
+      Score sintetico di rischio per triage rapido — complementare a EmailRep
+      (fonte diversa, metodologia diversa).
+    source_authority: aggregator_automated
+    network_requirement: online_api
+    privacy_impact: leak_query
+    cost: freemium
+    geographic_scope: global
+    practical_accuracy: medium
+    triangulates_with: [site-emailrep]
+    operational_notes: |
+      Richiede IPQS_API_KEY (free tier limitato). Senza key la risorsa non
+      compare. La key è nel path della richiesta: mai loggata negli errori.
+      L'email viene inviata a IPQualityScore (leak_query).
+    last_verified: "2026-07-19"
+
+
+  - id: site-ipqs-phone
+    kind: website
+    name: "IPQualityScore (fraud score telefono)"
+    applies_to:
+      entity_types: [phone]
+    validation_status: unverified
+    url: "https://www.ipqualityscore.com/"
+    url_template: "https://www.ipqualityscore.com/"
+    description: |
+      Fraud score e validazione live di un numero (IPQualityScore): valido,
+      attivo, tipo linea, operatore, abuso recente, trapelato, rischioso.
+    purpose: |
+      Validazione live con segnali di rischio, oltre ai dati offline di
+      site-phone-info (regione/operatore locale via libreria).
+    source_authority: aggregator_automated
+    network_requirement: online_api
+    privacy_impact: leak_query
+    cost: freemium
+    geographic_scope: global
+    practical_accuracy: medium
+    triangulates_with: [site-phone-info, site-numverify]
+    operational_notes: |
+      Richiede IPQS_API_KEY (stessa key di site-ipqs-email, free tier
+      limitato). Senza key la risorsa non compare. La key è nel path della
+      richiesta: mai loggata negli errori. Il numero viene inviato a
+      IPQualityScore (leak_query).
+    last_verified: "2026-07-19"
+
+
+  - id: site-numverify
+    kind: website
+    name: "Numverify (validazione telefono)"
+    applies_to:
+      entity_types: [phone]
+    validation_status: unverified
+    url: "https://numverify.com/"
+    url_template: "https://numverify.com/"
+    description: |
+      Validazione live di un numero (Numverify): valido, paese, operatore,
+      tipo linea (mobile/fisso/VoIP).
+    purpose: |
+      Validazione live in tempo reale, complementare ai dati offline di
+      site-phone-info (che usa una libreria locale non sempre aggiornata sui
+      cambi di operatore).
+    source_authority: aggregator_automated
+    network_requirement: online_api
+    privacy_impact: leak_query
+    cost: freemium
+    geographic_scope: global
+    practical_accuracy: medium
+    triangulates_with: [site-phone-info, site-ipqs-phone]
+    operational_notes: |
+      Richiede NUMVERIFY_API_KEY (free tier). Senza key la risorsa non
+      compare. Il numero viene inviato a Numverify (leak_query).
+    last_verified: "2026-07-19"
+
+
+  # ── Batch persone (Wave C1): presenza username via dataset locale
+  #    (719 siti). ON-DEMAND: non parte da sola, richiede click "Verifica"
+  #    (troppe richieste per l'auto-fire all'espansione della card). ──
+  - id: site-whatsmyname
+    kind: website
+    name: "WhatsMyName (presenza username)"
+    applies_to:
+      entity_types: [username, social_handle]
+    validation_status: unverified
+    url: "https://github.com/WebBreacher/WhatsMyName"
+    url_template: "https://github.com/WebBreacher/WhatsMyName"
+    description: |
+      Verifica la presenza di uno username su 719 siti (dataset WhatsMyName,
+      vendorizzato localmente): per ogni sito un GET mirato, match su codice
+      HTTP e stringa distintiva della pagina "profilo esiste".
+    purpose: |
+      Enumerazione ampia delle piattaforme dove un username è registrato —
+      copertura molto più larga dei singoli link statici (GitHub/Reddit/...).
+    source_authority: aggregator_automated
+    network_requirement: online_api
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: medium
+    triangulates_with: [site-github-api, site-keybase-api, site-reddit-api]
+    operational_notes: |
+      ON-DEMAND (bottone "Verifica", non parte da sola): 719 richieste HTTP
+      concorrenti (max 20 in parallelo) impiegano diversi secondi e sono
+      troppo invasive per l'auto-fire. Alcuni siti (58/719) hanno protezioni
+      anti-bot (Cloudflare, captcha) che possono dare falsi negativi; ~21/719
+      usano POST invece di GET e sono saltati dal checker (non supportati in
+      questa prima versione). Lo username viene inviato in chiaro a tutti i
+      siti interrogati (leak_query ampio).
+    last_verified: "2026-07-20"
+
+
+  # ── Batch persone (Wave C2): email -> account registrati, via subprocess
+  #    holehe. ON-DEMAND: non parte da sola, richiede click "Verifica". ──
+  - id: site-holehe
+    kind: website
+    name: "Holehe (account registrati)"
+    applies_to:
+      entity_types: [email]
+    validation_status: unverified
+    url: "https://github.com/megadose/holehe"
+    url_template: "https://github.com/megadose/holehe"
+    description: |
+      Verifica su quali servizi (~120) un'email è registrata, sfruttando i
+      loro flussi pubblici di recupero password — senza completare un vero
+      recovery, solo il passo che rivela se l'account esiste.
+    purpose: |
+      Mappare la presenza online di un'email su piattaforme che non
+      espongono un profilo pubblico ricercabile (a differenza di GitHub/
+      Reddit/ecc., dove basta l'API pubblica).
+    source_authority: aggregator_automated
+    network_requirement: online_api
+    privacy_impact: leak_query
+    cost: free
+    geographic_scope: global
+    practical_accuracy: medium
+    triangulates_with: [site-emailrep, site-hudsonrock-email]
+    operational_notes: |
+      ON-DEMAND (bottone "Verifica", non parte da sola): interroga ~120
+      servizi terzi, richiede 30-60 secondi. Non invia un vero recovery
+      (nessuna email/SMS al titolare reale), ma il fatto stesso di
+      interrogare ~120 siti con l'indirizzo è un leak_query ampio.
+      Richiede il pacchetto Python "holehe" installato (uv add holehe).
+    last_verified: "2026-07-21"

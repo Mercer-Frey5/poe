@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="cross-obs-section">
+  <h2 class="section-title">IOC: <code>{{ entity_value }}</code></h2>
+  <p class="obs-count">Visto in {{ count }} osservazione{% if count != 1 %}i{% endif %}</p>
+
+  {% if observations %}
+  <ul class="obs-list">
+    {% for obs in observations %}
+    <li class="obs-item">
+      <a href="/e/{{ obs.id }}">#{{ obs.id }} — {{ obs.timestamp[:16] }}
+        {% if obs.label %} · {{ obs.label }}{% endif %}
+        {% if obs.kept %} &#9733;{% endif %}
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="empty-state">Nessuna osservazione trovata.</p>
+  {% endif %}
+
+  <h3 class="section-title" style="margin-top:var(--sp-lg);">IOC correlati</h3>
+  {% if related %}
+  <ul class="related-list">
+    {% for e in related %}
+    <li class="related-item">
+      <span class="type-badge type-{{ e.type }}">{{ e.type }}</span>
+      <a href="/e/cross/{{ e.value | urlencode }}"><code>{{ e.value }}</code></a>
+      <span class="related-shared">in {{ e.shared }} oss.</span>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="empty-state">Nessun IOC correlato.</p>
+  {% endif %}
+</section>
+{% endblock %}

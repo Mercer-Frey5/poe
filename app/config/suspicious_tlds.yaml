@@ -1,0 +1,54 @@
+# suspicious_tlds.yaml — lista TLD associati ad abuso frequente
+#
+# Versione: 1.0 — 2026-05-06
+# Curata manualmente. Manutenzione on-touch durante l'uso:
+# se un TLD in questa lista cessa di essere abusivo o se ne
+# scoprono di nuovi, aggiornare con data e motivazione.
+#
+# Criterio di inclusione:
+# - Frequenza di abuso documentata in report threat intel (phishing,
+#   malware C2, spam, registrazione massiva low-cost)
+# - TLD con costo di registrazione estremamente basso o gratuito
+#   che ha storicamente attirato campagne malware
+#
+# Criterio di esclusione:
+# - TLD geografici legittimi (anche se talvolta abusati): .ru, .cn
+#   → presenza normale, esclusione genera troppi FP
+# - TLD di aziende/brand: .google, .apple — mai abusati per campagne
+#
+# Impatto su Entity:
+# - I domini con TLD in questa lista ricevono flag metadata.suspicious_tld = true
+# - Confidenza del flag: medium (la lista è curabile ma non infallibile)
+#
+# last_updated: 2026-05-06
+
+- .xyz       # Registrazioni massiva low-cost, alta frequenza in campagne phishing
+- .tk        # Gratuito (Tokelau), storicamente il più abusato per phishing
+- .ml        # Gratuito (Mali), frequente in campagne spam
+- .ga        # Gratuito (Gabon), frequente in campagne spam
+- .gq        # Gratuito (Guinea Equatoriale), frequente in campagne spam
+- .cf        # Gratuito (Repubblica Centrafricana), frequente in campagne spam
+- .pw        # Low-cost (Palau), frequente per siti temporanei phishing
+- .top       # Low-cost, alta frequenza in campagne SEO-spam e phishing
+- .click      # Low-cost, frequente in campagne click-fraud e phishing
+- .download  # Frequente in distribuzione malware
+- .zip       # Frequente in phishing (confusione con estensioni file)
+- .mov       # Frequente in phishing (confusione con estensioni file)
+- .work      # Low-cost, frequente in siti di phishing a tema lavoro
+- .loan      # Frequente in campagne scam finanziarie
+- .win       # Low-cost, frequente in campagne scam/gambling
+- .party     # Low-cost, frequente in campagne spam
+- .racing    # Low-cost, frequente in campagne spam
+- .review    # Frequente in siti di phishing a tema recensioni
+- .stream    # Frequente in siti pirateria e phishing
+- .gdn       # Frequente in campagne spam
+- .men       # Low-cost, frequente in campagne spam
+- .date      # Low-cost, frequente in campagne scam
+- .faith     # Low-cost, frequente in campagne spam
+- .webcam    # Frequente in campagne scam
+- .accountant # Frequente in phishing a tema finanziario
+- .science   # Low-cost, frequente in campagne spam
+- .life      # Low-cost, frequente in campagne phishing
+- .live      # Frequente in streaming pirata e phishing
+- .online    # Frequente in siti phishing (suona legittimo)
+- .site      # Low-cost, frequente in siti phishing temporanei

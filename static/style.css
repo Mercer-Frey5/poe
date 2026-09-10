@@ -1,0 +1,2388 @@
+/* ==========================================================================
+   POE — v0.3
+   Design tokens via CSS custom properties, tema unico.
+
+   v0.2 aveva un sistema multi-tema con 7 varianti selezionabili da
+   tendina. v0.3 collassa a tema fisso (tech-mono con asset Operatore):
+   l'identità visiva di POE è non configurabile per scelta strategica.
+   Tutti i token vivono in :root. Niente più [data-theme="..."],
+   niente più switcher, niente più localStorage per il tema.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Design tokens — tema unico
+       v0.2 aveva un sistema multi-tema con 7 blocchi [data-theme="..."].
+       v0.3 collassa a tema singolo: l'identità visiva di POE è fissa,
+       non configurabile (decisione strategica post-v0.2).
+
+       Palette: tech-mono (sfondo nero caldo, accenti ambra, monospace
+       ovunque), con le modifiche locali Operatore — contrasto AAA sul
+       testo principale, accent collassato su Ant Design orange con
+       hover scuro per feedback bottoni.
+   -------------------------------------------------------------------------- */
+
+:root {
+    /* Spaziatura, raggi, layout, transizioni */
+    --sp-xs: 0.25rem;
+    --sp-sm: 0.5rem;
+    --sp-md: 1rem;
+    --sp-lg: 1.5rem;
+    --sp-xl: 2rem;
+
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+
+    --content-max-width: 1100px;
+
+    --transition-fast: 0.1s ease;
+    --transition-base: 0.15s ease;
+
+    /* Palette: sfondo nero caldo */
+    --color-bg-base:        #1a1814;
+    --color-bg-surface:     #232017;
+    --color-bg-elevated:    #2c281f;
+    --color-bg-input:       #1f1c16;
+
+    /* Palette: testo (con asset locali Operatore — contrasto AAA) */
+    --color-text-primary:   #fffffb;
+    --color-text-secondary: #d4c8b0;
+    --color-text-muted:     #746551;
+    --color-text-on-accent: #1a1814;
+
+    /* Palette: accento ambra (Ant Design orange + hover scuro) */
+    --color-accent-primary:   #fa8c16;
+    --color-accent-secondary: #fa8c16;
+    --color-accent-hover:     #d97706;
+
+    /* Palette: stati semantici */
+    --color-success: #8ba872;
+    --color-warning: #ffae3a;
+    --color-danger:  #c2543d;
+    --color-info:    #7a9ba8;
+
+    /* Palette: bordi e divisori */
+    --color-border-subtle: #2e2a22;
+    --color-border-strong: #4a4334;
+    --color-divider:       #25221b;
+
+    /* Ombre profonde su sfondo scuro */
+    --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.5);
+    --shadow-md: 0 6px 12px rgba(0, 0, 0, 0.6);
+    --shadow-lg: 0 16px 32px rgba(0, 0, 0, 0.7);
+
+    /* Tipografia: monospace ovunque per look terminale CRT vintage */
+    --font-body:    'IBM Plex Mono', 'Consolas', monospace;
+    --font-display: 'IBM Plex Mono', 'Consolas', monospace;
+    --font-mono:    'IBM Plex Mono', 'Consolas', monospace;
+
+    /* Font del logo POE: Orbitron, identità di marca distinta dal corpo. */
+    --font-brand:   'Orbitron', 'Space Grotesk', sans-serif;
+
+    /* CRT atmosphere v0.4 */
+    --glow-amber:    0 0 8px rgba(250, 140, 22, 0.4);
+    --glow-amber-strong: 0 0 14px rgba(250, 140, 22, 0.6);
+    --glow-green:    0 0 6px rgba(82, 196, 26, 0.45);
+}
+
+/* --------------------------------------------------------------------------
+   7. Reset minimale
+   -------------------------------------------------------------------------- */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.5;
+    background: var(--color-bg-base);
+    color: var(--color-text-primary);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+h1, h2, h3, h4 {
+    line-height: 1.25;
+    margin-top: 0;
+    font-family: var(--font-display);
+    color: var(--color-text-primary);
+}
+
+a { color: var(--color-accent-primary); text-decoration: none; }
+a:hover, a:focus { color: var(--color-accent-hover); text-decoration: underline; }
+
+a:focus-visible,
+button:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+    outline: 2px solid var(--color-accent-primary);
+    outline-offset: 2px;
+}
+
+code, pre { font-family: var(--font-mono); }
+pre { white-space: pre-wrap; word-break: break-word; }
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* --------------------------------------------------------------------------
+   8. Layout: header, main, footer
+   -------------------------------------------------------------------------- */
+
+.site-header {
+    border-bottom: 1px solid var(--color-border-subtle);
+    background: var(--color-bg-surface);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem var(--sp-xl);
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    width: 100%;
+    gap: var(--sp-md);
+    flex-wrap: wrap;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-md);
+    flex-wrap: wrap;
+}
+
+.brand-link {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-sm);
+    color: var(--color-text-primary);
+    text-decoration: none;
+    font-weight: 700;
+}
+
+.brand-link:hover, .brand-link:focus {
+    color: var(--color-accent-primary);
+    text-decoration: none;
+}
+
+.brand-eye { width: 2.1rem; height: 2.1rem; border-radius: 50%; object-fit: cover; display: block; }
+
+.brand-name {
+    font-size: 1.75rem;
+    letter-spacing: 0.04em;
+    font-family: var(--font-brand);
+    font-weight: 700;
+    /* Logo POE sempre bianco, indipendente da hover/focus del link.
+       Il link genitore .brand-link cambia colore al passaggio mouse,
+       ma il logo deve restare riconoscibile come identità di marca. */
+    color: var(--color-text-primary);
+}
+
+.brand-subtitle {
+    color: var(--color-text-secondary);
+    font-size: 0.9rem;
+    font-family: var(--font-mono);
+}
+
+.tagline {
+    color: var(--color-text-secondary);
+    margin: var(--sp-sm) 0 0;
+    font-size: 0.95rem;
+    font-style: italic;
+}
+
+.poe-greeting {
+    color: var(--color-text-secondary);
+    margin: var(--sp-md) 0 0;
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    font-style: italic;
+    line-height: 1.4;
+}
+
+.back-link { font-size: 0.9rem; font-family: var(--font-mono); }
+
+.site-main {
+    padding: var(--sp-xl);
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    width: 100%;
+    flex: 1;
+}
+
+.site-footer {
+    text-align: center;
+    padding: var(--sp-xl);
+    color: var(--color-text-muted);
+    font-size: 0.8rem;
+    border-top: 1px solid var(--color-border-subtle);
+    margin-top: var(--sp-xl);
+}
+
+/* --------------------------------------------------------------------------
+   10. Form
+   -------------------------------------------------------------------------- */
+
+.analyzer textarea {
+    width: 100%;
+    background: var(--color-bg-input);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    padding: var(--sp-md);
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    line-height: 1.5;
+    resize: vertical;
+    min-height: 200px;
+    transition: border-color var(--transition-base);
+}
+
+.analyzer textarea:focus {
+    outline: none;
+    border-color: var(--color-accent-primary);
+    box-shadow: 0 0 0 1px var(--color-accent-secondary);
+}
+
+.analyzer textarea::placeholder {
+    color: var(--color-text-muted);
+    font-style: italic;
+}
+
+.form-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: var(--sp-xs);
+    gap: var(--sp-md);
+}
+
+.char-counter {
+    color: var(--color-text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+}
+
+.keyboard-hint {
+    color: var(--color-text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.02em;
+}
+
+.keyboard-hint kbd {
+    background: var(--color-bg-elevated);
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 0.05rem 0.35rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+}
+
+.form-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-md);
+    margin-top: var(--sp-md);
+    flex-wrap: wrap;
+}
+
+button {
+    background: var(--color-accent-primary);
+    color: var(--color-text-on-accent);
+    border: none;
+    padding: 0.6rem 1.5rem;
+    border-radius: var(--radius-md);
+    font-weight: 600;
+    font-size: 0.95rem;
+    font-family: inherit;
+    cursor: pointer;
+    transition: background-color var(--transition-base);
+}
+
+button:hover, button:focus { background: var(--color-accent-hover); }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.htmx-indicator {
+    display: none;
+    color: var(--color-text-secondary);
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+}
+
+.htmx-request .htmx-indicator,
+.htmx-indicator.htmx-request {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--sp-xs);
+}
+
+.htmx-request button { opacity: 0.5; pointer-events: none; }
+
+/* --------------------------------------------------------------------------
+   11. Result card + entity groups
+   -------------------------------------------------------------------------- */
+
+.result-card {
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-lg);
+    padding: var(--sp-lg);
+    margin-top: var(--sp-lg);
+    box-shadow: var(--shadow-sm);
+}
+
+.result-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    border-bottom: 1px solid var(--color-border-subtle);
+    padding-bottom: var(--sp-sm);
+    margin-bottom: var(--sp-md);
+    gap: var(--sp-md);
+    flex-wrap: wrap;
+}
+
+.result-header h3 { margin: 0; font-size: 1.1rem; }
+
+.result-header .meta {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+    font-family: var(--font-mono);
+}
+
+.result-header .meta strong { color: var(--color-accent-primary); }
+
+.entity-groups { display: grid; gap: var(--sp-md); }
+
+.entity-group {
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    padding: var(--sp-md);
+}
+
+.entity-group h4 {
+    margin: 0 0 var(--sp-sm);
+    display: flex;
+    align-items: center;
+    gap: var(--sp-sm);
+    font-size: 0.85rem;
+    font-weight: 500;
+    font-family: var(--font-body);
+}
+
+.entity-group h4 .count {
+    color: var(--color-text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+}
+
+/* Type-badge: stile unico, usa l'accento del tema.
+   La distinzione tra tipi sta nel nome leggibile, non nel colore. */
+.type-badge {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    padding: 0.15rem 0.55rem;
+    background: var(--color-border-strong);
+    color: var(--color-accent-primary);
+    border-radius: var(--radius-sm);
+    text-transform: lowercase;
+    letter-spacing: 0.03em;
+    font-weight: 600;
+}
+
+.entity-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-xs);
+}
+
+.entity-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--sp-sm);
+    padding: var(--sp-xs) var(--sp-sm);
+    border-radius: var(--radius-sm);
+    transition: background-color var(--transition-fast);
+}
+
+.entity-item:hover { background: var(--color-bg-elevated); }
+
+.entity-item .value {
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    color: var(--color-text-primary);
+    word-break: break-all;
+    flex: 1;
+}
+
+.entity-item .original-form {
+    color: var(--color-text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-style: italic;
+    margin-left: var(--sp-sm);
+}
+
+.copy-btn {
+    background: transparent;
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border-subtle);
+    padding: 0.15rem 0.55rem;
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all var(--transition-base);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.copy-btn .copy-label {
+    font-size: 0.7rem;
+    letter-spacing: 0.02em;
+}
+
+.copy-btn:hover, .copy-btn:focus {
+    background: var(--color-border-subtle);
+    color: var(--color-accent-primary);
+    border-color: var(--color-accent-secondary);
+}
+
+.copy-btn.copied {
+    background: rgba(82, 196, 26, 0.15);
+    color: #52c41a;
+    border-color: rgba(82, 196, 26, 0.45);
+}
+
+/* ── Delete observation button (X nel header card) ── */
+.delete-obs-btn {
+    background: transparent;
+    color: var(--color-text-muted);
+    border: 1px solid transparent;
+    padding: 0.1rem 0.4rem;
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all var(--transition-base);
+    line-height: 1;
+}
+
+.delete-obs-btn:hover, .delete-obs-btn:focus {
+    background: rgba(255, 77, 79, 0.12);
+    color: #ff4d4f;
+    border-color: rgba(255, 77, 79, 0.35);
+}
+
+/* ── Accuratezza media ── */
+.accuracy-badge {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    border-radius: var(--radius-sm);
+    padding: 0.1rem 0.4rem;
+    white-space: nowrap;
+    border: 1px solid transparent;
+}
+
+.conf-accuracy-high   { background: rgba(82, 196, 26, 0.14); color: #52c41a; border-color: rgba(82, 196, 26, 0.35); }
+.conf-accuracy-medium { background: rgba(250, 219, 20, 0.12); color: #e8c900; border-color: rgba(250, 219, 20, 0.40); }
+.conf-accuracy-low    { background: rgba(255, 77, 79, 0.12); color: #ff4d4f; border-color: rgba(255, 77, 79, 0.30); }
+
+.accuracy-sm {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--color-text-muted);
+}
+
+/* ── Bandiera telefono ── */
+.phone-flag {
+    font-size: 0.82rem;
+    flex-shrink: 0;
+    letter-spacing: 0.01em;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+}
+
+/* ── Label rinomina nel result-header ── */
+.result-header {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--sp-sm);
+}
+
+.obs-label-area {
+    flex: 1;
+    min-width: 0;
+}
+
+.obs-label-display {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-xs);
+}
+
+.obs-title-text {
+    font-family: var(--font-display);
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.label-edit-trigger {
+    background: transparent;
+    border: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font-size: 0.8rem;
+    padding: 0.1rem 0.25rem;
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+    transition: color var(--transition-fast);
+}
+
+.label-edit-trigger:hover, .label-edit-trigger:focus {
+    color: var(--color-accent-primary);
+}
+
+.obs-label-form {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-xs);
+    flex-wrap: wrap;
+}
+
+.obs-label-form--hidden { display: none; }
+
+.label-input {
+    background: var(--color-bg-input);
+    color: var(--color-text-primary);
+    border: 1px solid var(--color-accent-primary);
+    border-radius: var(--radius-sm);
+    padding: 0.2rem 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    flex: 1;
+    min-width: 140px;
+    max-width: 280px;
+}
+
+.label-input:focus { outline: none; box-shadow: 0 0 0 1px var(--color-accent-primary); }
+
+.label-save-btn, .label-cancel-btn {
+    background: transparent;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 0.2rem 0.45rem;
+    font-size: 0.8rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all var(--transition-fast);
+    font-family: var(--font-mono);
+}
+
+.label-save-btn   { color: #52c41a; border-color: rgba(82, 196, 26, 0.4); }
+.label-cancel-btn { color: var(--color-text-muted); }
+
+.label-save-btn:hover   { background: rgba(82, 196, 26, 0.12); }
+.label-cancel-btn:hover { background: var(--color-bg-elevated); color: #ff4d4f; }
+
+/* Label evidenziato in history */
+.history-label {
+    color: var(--color-accent-primary);
+    font-style: normal;
+}
+
+/* ── X per singola entità ── */
+.entity-delete-form {
+    display: inline;
+    margin: 0;
+    padding: 0;
+}
+
+.entity-delete-btn {
+    background: transparent;
+    color: var(--color-text-muted);
+    border: none;
+    padding: 0.1rem 0.3rem;
+    font-size: 0.65rem;
+    font-family: var(--font-mono);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: all var(--transition-fast);
+    opacity: 0;
+    line-height: 1;
+}
+
+/* Mostra la X al hover della riga e al focus (accessibilità tastiera) */
+.entity-item:hover .entity-delete-btn,
+.entity-item:focus-within .entity-delete-btn { opacity: 1; }
+.entity-delete-btn:hover, .entity-delete-btn:focus,
+.entity-delete-btn:focus-visible {
+    background: rgba(255, 77, 79, 0.12);
+    color: #ff4d4f;
+    opacity: 1;
+}
+
+.no-entities {
+    color: var(--color-text-secondary);
+    font-style: italic;
+    padding: var(--sp-lg);
+    text-align: center;
+    background: var(--color-bg-surface);
+    border-radius: var(--radius-md);
+    margin: 0;
+}
+
+/* --------------------------------------------------------------------------
+   12. History
+   -------------------------------------------------------------------------- */
+
+.history {
+    margin-top: var(--sp-xl);
+    padding-top: var(--sp-lg);
+    border-top: 1px solid var(--color-border-subtle);
+}
+
+.history h2 {
+    color: var(--color-text-secondary);
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: var(--sp-md);
+    font-family: var(--font-body);
+}
+
+.history-list {
+    list-style: none; padding: 0; margin: 0;
+    max-height: 640px; overflow-y: auto;
+}
+
+/* Pagina Database: lista intera, non il widget scorrevole della sidebar. */
+.database-list { max-height: none; overflow-y: visible; }
+
+.history-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: var(--sp-md);
+    padding: var(--sp-sm) var(--sp-md);
+    color: var(--color-text-primary);
+    text-decoration: none;
+    border-bottom: 1px solid var(--color-border-subtle);
+    font-size: 0.9rem;
+    align-items: center;
+    transition: background-color var(--transition-fast);
+}
+
+.history-item:hover, .history-item:focus {
+    background: var(--color-bg-elevated);
+    text-decoration: none;
+    color: var(--color-text-primary);
+}
+
+.history-item .ts {
+    color: var(--color-text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
+.history-item .preview {
+    color: var(--color-text-primary);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.history-item .count {
+    color: var(--color-accent-primary);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   13. Detail page (input originale)
+   -------------------------------------------------------------------------- */
+
+.original-input { margin-bottom: var(--sp-lg); }
+
+.original-input h2 {
+    font-size: 1rem;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: var(--sp-sm);
+    font-family: var(--font-body);
+}
+
+.original-input pre {
+    background: var(--color-bg-surface);
+    padding: var(--sp-md);
+    border-radius: var(--radius-md);
+    border: 1px solid var(--color-border-subtle);
+    font-size: 0.85rem;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+/* --------------------------------------------------------------------------
+   14. Error card
+   -------------------------------------------------------------------------- */
+
+.error-card {
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-danger);
+    border-radius: var(--radius-lg);
+    padding: var(--sp-md) var(--sp-lg);
+    margin-top: var(--sp-lg);
+}
+
+.error-card h3 { margin-top: 0; color: var(--color-danger); }
+
+.error-card pre {
+    background: var(--color-bg-input);
+    padding: var(--sp-sm) var(--sp-md);
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    color: var(--color-danger);
+}
+
+.hint { color: var(--color-text-secondary); font-size: 0.85rem; margin-bottom: 0; }
+
+/* --------------------------------------------------------------------------
+   16. v0.4 — Confidence badge, flags, score, kept, filter tabs
+   -------------------------------------------------------------------------- */
+
+/* ── Tooltip CSS generico (usato da [data-tooltip]) ── */
+[data-tooltip] { position: relative; }
+[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    color: var(--color-text-secondary);
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    white-space: nowrap;
+    padding: 0.3rem 0.65rem;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity var(--transition-base);
+    /* z-index 10000 sopra le scanlines (9999) — altrimenti il tooltip
+       viene scurito dal mix-blend-mode multiply dell'overlay CRT. */
+    z-index: 10000;
+    box-shadow: var(--shadow-md);
+}
+[data-tooltip]:hover::after,
+[data-tooltip]:focus-visible::after { opacity: 1; }
+
+/* Status bar: è in cima alla pagina (header sticky). Un tooltip sopra
+   (bottom:100%) coprirebbe l'header → lo ancoriamo SOTTO la barra e a
+   sinistra (niente clipping a sx sul primo item). */
+.status-item[data-tooltip]::after {
+    bottom: auto; top: calc(100% + 6px);
+    left: 0; transform: none;
+}
+/* Col picker "POE-AI" aperto, niente tooltip che si sovrappone al menu. */
+.status-item[aria-expanded="true"][data-tooltip]::after { opacity: 0; }
+
+/* ── Confidence badge: lettera iniziale colorata ── */
+.conf-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.3rem;
+    height: 1.3rem;
+    padding: 0 0.4rem;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    flex-shrink: 0;
+    cursor: pointer;
+}
+
+/* Scala escalation L->M->H->C: verde -> giallo -> arancio-rossiccio -> rosso scuro */
+
+/* Verde — low (~35%) */
+.conf-low {
+    background: rgba(82, 196, 26, 0.18);
+    color: #52c41a;
+    border: 1px solid rgba(82, 196, 26, 0.45);
+}
+
+/* Giallo vivace — medium (~65%) */
+.conf-medium {
+    background: rgba(250, 219, 20, 0.14);
+    color: #e8c900;
+    border: 1px solid rgba(250, 219, 20, 0.50);
+}
+
+/* Arancio rossiccio — high (~90%) */
+.conf-high {
+    background: rgba(255, 122, 69, 0.18);
+    color: #ff7a45;
+    border: 1px solid rgba(255, 122, 69, 0.45);
+}
+
+/* Rosso forte, un po' scuro — critical: gradino oltre high, riservato a
+   estrazioni corroborate da 2+ fonti reputation indipendenti. */
+.conf-critical {
+    background: rgba(207, 19, 34, 0.20);
+    color: #cf1322;
+    border: 1px solid rgba(207, 19, 34, 0.50);
+}
+
+/* Country code telefono */
+.phone-cc {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+}
+
+/* ── Flag tag cliccabile (⚠ tld e futuri flag) ── */
+.flag-tag {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    flex-shrink: 0;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    padding: 0.1rem 0.35rem;
+    border: 1px solid transparent;
+    transition: all var(--transition-fast);
+    user-select: none;
+}
+
+.flag-suspicious-tld {
+    color: var(--color-warning);
+    border-color: rgba(255, 174, 58, 0.3);
+    background: rgba(255, 174, 58, 0.08);
+}
+
+.flag-suspicious-tld:hover,
+.flag-suspicious-tld:focus-visible {
+    background: rgba(255, 174, 58, 0.18);
+    border-color: rgba(255, 174, 58, 0.6);
+    outline: none;
+}
+
+/* ── Wiki popover ── */
+.wiki-popover {
+    position: fixed;
+    /* z-index 10001 sopra scanlines (9999) e tooltip (10000): il popover
+       è UI modale e deve apparire pulito sopra l'overlay CRT. */
+    z-index: 10001;
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-lg);
+    padding: var(--sp-md);
+    max-width: 320px;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    animation: wiki-in 0.12s ease;
+}
+
+@keyframes wiki-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.wiki-popover-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--sp-sm);
+    gap: var(--sp-sm);
+}
+
+.wiki-popover-title {
+    color: var(--color-warning);
+    font-weight: 600;
+    font-size: 0.82rem;
+    margin: 0;
+}
+
+.wiki-popover-close {
+    background: transparent;
+    border: none;
+    color: var(--color-text-muted);
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0;
+    line-height: 1;
+    flex-shrink: 0;
+}
+
+.wiki-popover-close:hover { color: var(--color-text-primary); }
+
+.wiki-popover-body {
+    color: var(--color-text-secondary);
+    line-height: 1.5;
+    margin: 0;
+    white-space: pre-line;
+}
+
+
+/* Score piccolo nella history list */
+.score-sm {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--color-text-muted);
+}
+
+/* Result header: flex row con gap */
+.result-header-right {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-sm);
+    flex-wrap: wrap;
+}
+
+/* Kept toggle button */
+.kept-btn {
+    background: transparent;
+    color: var(--color-text-muted);
+    border: 1px solid var(--color-border-subtle);
+    padding: 0.15rem 0.5rem;
+    font-size: 0.75rem;
+    font-family: var(--font-mono);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all var(--transition-base);
+    white-space: nowrap;
+}
+
+.kept-btn:hover, .kept-btn:focus {
+    background: var(--color-bg-elevated);
+    color: var(--color-accent-primary);
+    border-color: var(--color-accent-secondary);
+}
+
+.kept-btn.kept-active {
+    background: rgba(139, 168, 114, 0.15);
+    color: var(--color-success);
+    border-color: rgba(139, 168, 114, 0.4);
+}
+
+.kept-btn.kept-active:hover, .kept-btn.kept-active:focus {
+    background: rgba(139, 168, 114, 0.25);
+}
+
+/* Inline form dentro kept toggle (niente margini extra) */
+#kept-toggle-* form,
+[id^="kept-toggle-"] form {
+    display: inline;
+    margin: 0;
+}
+
+/* Export button */
+.export-btn {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 0.15rem 0.5rem;
+    text-decoration: none;
+    transition: all var(--transition-base);
+    white-space: nowrap;
+}
+
+.export-btn:hover, .export-btn:focus {
+    background: var(--color-bg-elevated);
+    color: var(--color-accent-primary);
+    border-color: var(--color-accent-secondary);
+    text-decoration: none;
+}
+
+/* Export: un bottone solo, apre un menu con la scelta RAW/AI invece di
+   2 link sempre visibili in header. */
+.export-dropdown { position: relative; display: inline-block; }
+
+.export-menu {
+    display: none;
+    position: absolute;
+    top: 100%;
+    right: 0;
+    margin-top: 0.3rem;
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-lg);
+    z-index: 100;
+    min-width: 150px;
+    overflow: hidden;
+    animation: fade-in 0.12s ease;
+}
+
+.export-dropdown.open .export-menu {
+    display: flex;
+    flex-direction: column;
+}
+
+.export-menu a {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+    padding: 0.45rem 0.65rem;
+    text-decoration: none;
+    white-space: nowrap;
+}
+
+.export-menu a:hover, .export-menu a:focus {
+    background: var(--color-bg-surface);
+    color: var(--color-accent-primary);
+}
+
+.export-menu a:last-child {
+    border-top: 1px solid var(--color-border-subtle);
+}
+
+/* Refresh (Ricontrolla) — bottone icona rotonda, deliberatamente diverso
+   dai bottoni rettangolari intorno (export/elimina): azione secondaria
+   nell'header della card, non la CTA primaria "LLM Enricher". */
+.refresh-obs-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    font-size: 0.85rem;
+    color: var(--color-text-muted);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 50%;
+    width: 1.7rem;
+    height: 1.7rem;
+    padding: 0;
+    transition: all var(--transition-base);
+}
+
+.refresh-obs-btn:hover, .refresh-obs-btn:focus {
+    background: var(--color-bg-elevated);
+    color: var(--color-accent-primary);
+    border-color: var(--color-accent-secondary);
+    transform: rotate(90deg);
+}
+
+/* Kept indicator nella history list (stellina) */
+.kept-indicator {
+    color: var(--color-success);
+    font-size: 0.75rem;
+}
+
+/* History meta: count + score + kept in riga */
+.history-meta {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-xs);
+    white-space: nowrap;
+}
+
+/* History empty state */
+.history-empty {
+    color: var(--color-text-muted);
+    font-size: 0.85rem;
+    font-style: italic;
+    padding: var(--sp-sm) var(--sp-md);
+}
+
+/* Filter tabs sulla history */
+.filter-tabs {
+    display: flex;
+    gap: var(--sp-xs);
+    margin-bottom: var(--sp-sm);
+    flex-wrap: wrap;
+}
+
+.filter-tab {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-text-muted);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 0.15rem 0.6rem;
+    text-decoration: none;
+    transition: all var(--transition-base);
+}
+
+.filter-tab:hover, .filter-tab:focus {
+    color: var(--color-accent-primary);
+    border-color: var(--color-accent-secondary);
+    text-decoration: none;
+}
+
+.filter-tab.active {
+    background: var(--color-border-strong);
+    color: var(--color-accent-primary);
+    border-color: var(--color-accent-secondary);
+}
+
+.history-limit-label {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--color-text-muted);
+}
+
+.history-limit-label select {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--color-text-secondary);
+    background: var(--color-bg-base);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 0.1rem 0.3rem;
+}
+
+/* --------------------------------------------------------------------------
+   15. Responsive
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 640px) {
+    :root { --sp-xl: 1.25rem; }
+
+    .site-header, .site-main { padding: var(--sp-md); }
+    .header-top { flex-direction: column; }
+    .brand-name { font-size: 1.4rem; }
+
+    .history-item {
+        grid-template-columns: 1fr;
+        gap: var(--sp-xs);
+    }
+
+    .history-item .ts, .history-item .count { font-size: 0.7rem; }
+    .entity-item { flex-wrap: wrap; }
+}
+
+/* --------------------------------------------------------------------------
+   17. v0.4 — CRT atmosphere (frontend-design pass)
+
+   Layered effects per identità "OSINT analyst su monitor CRT vintage":
+   - Scanlines fisse su tutto il viewport (sottili, non disturbanti)
+   - Grana noise sottile per look fosforescente analogico
+   - Phosphor glow su logo e accenti
+   - Cursor blink su brand-eye e status indicator
+   - Staggered entrance per result-card e entity-group
+   - Type-badge con bracket [type] al posto di pill
+   - Hover glow su valori entità
+
+   Tutti gli effetti rispettano prefers-reduced-motion.
+   -------------------------------------------------------------------------- */
+
+/* CRT rimosso (v0.5): niente scanlines, vignette, grana noise, phosphor flicker,
+   cursor blink, live-pulse. Tenuti solo glow statici e l'entrance card-in. */
+
+/* Glow statico sul logo (flicker CRT rimosso). */
+.brand-name {
+    text-shadow: var(--glow-amber);
+}
+
+/* Status dot nell'header (verde, lampeggiante come i dot dei servizi). */
+.brand::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #52c41a;
+    margin-right: var(--sp-sm);
+    box-shadow: var(--glow-green);
+    flex-shrink: 0;
+    align-self: center;
+    animation: pulse-dot 2.5s ease infinite;
+}
+@media (prefers-reduced-motion: reduce) { .brand::before { animation: none; } }
+
+/* Entrance animation per result-card.
+   Staggered fade-in con micro-slide dal basso. */
+.result-card {
+    animation: card-in 0.4s ease-out backwards;
+}
+
+.entity-group {
+    animation: card-in 0.35s ease-out backwards;
+}
+
+/* Stagger via nth-child delay. Oltre 12 gruppi cap a 0.6s (tipi v0.4
+   massimi possibili: 14). Senza cap, gruppi successivi non animano. */
+.entity-group:nth-child(1)  { animation-delay: 0.05s; }
+.entity-group:nth-child(2)  { animation-delay: 0.10s; }
+.entity-group:nth-child(3)  { animation-delay: 0.15s; }
+.entity-group:nth-child(4)  { animation-delay: 0.20s; }
+.entity-group:nth-child(5)  { animation-delay: 0.25s; }
+.entity-group:nth-child(6)  { animation-delay: 0.30s; }
+.entity-group:nth-child(7)  { animation-delay: 0.35s; }
+.entity-group:nth-child(8)  { animation-delay: 0.40s; }
+.entity-group:nth-child(9)  { animation-delay: 0.45s; }
+.entity-group:nth-child(10) { animation-delay: 0.50s; }
+.entity-group:nth-child(11) { animation-delay: 0.55s; }
+.entity-group:nth-child(n+12) { animation-delay: 0.60s; }
+
+@keyframes card-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Type-badge: brackets [type] al posto di pill.
+   Override solo aspetto, mantiene padding/font-size esistenti. */
+.type-badge {
+    background: transparent;
+    border: 1px solid var(--color-border-strong);
+    color: var(--color-accent-primary);
+    padding: 0.1rem 0.4rem;
+}
+
+.type-badge::before { content: '['; opacity: 0.6; margin-right: 1px; }
+.type-badge::after  { content: ']'; opacity: 0.6; margin-left:  1px; }
+
+/* Hover glow sul valore entità: amber leggero */
+.entity-item:hover .value {
+    text-shadow: 0 0 6px rgba(250, 140, 22, 0.25);
+}
+
+/* Bottone primary: phosphor glow sull'hover */
+button[type="submit"]:not(.kept-btn):not(.label-save-btn):not(.label-cancel-btn):hover {
+    box-shadow: var(--glow-amber);
+}
+
+/* Accent link in header con phosphor sottile */
+.tagline { letter-spacing: 0.01em; }
+
+/* Reduced motion: disabilita l'entrance animation residua */
+@media (prefers-reduced-motion: reduce) {
+    .result-card,
+    .entity-group {
+        animation: none;
+    }
+}
+
+/* ==========================================================================
+   v0.5 — Design aggiornato (da POE_FE_v3)
+   ========================================================================== */
+
+/* ── Header nav + version badge ── */
+.header-nav {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-xs);
+}
+
+.header-nav .nav-link {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--color-text-muted);
+    padding: 0.2rem 0.6rem;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition-base);
+    letter-spacing: 0.02em;
+    user-select: none;
+    text-decoration: none;
+}
+
+.header-nav .nav-link:hover,
+.header-nav .nav-link.active {
+    color: var(--color-accent-primary);
+    border-color: var(--color-border-strong);
+    background: rgba(250,140,22,0.06);
+    text-decoration: none;
+}
+
+.version-badge {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--color-accent-primary);
+    border: 1px solid var(--color-border-strong);
+    padding: 0.1rem 0.4rem;
+    border-radius: var(--radius-sm);
+}
+
+/* ── Status bar ── */
+.status-bar-wrapper {
+    border-bottom: 1px solid var(--color-border-subtle);
+    background: rgba(0,0,0,0.15);
+}
+
+.status-bar {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-lg);
+    padding: 0.3rem var(--sp-xl);
+    font-size: 0.67rem;
+    color: var(--color-text-muted);
+    overflow-x: auto;
+    scrollbar-width: none;
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+}
+
+.status-bar::-webkit-scrollbar { display: none; }
+
+.status-label {
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-size: 0.58rem;
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+}
+
+.status-items {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+}
+
+/* Ogni .status-item porta il proprio separatore (border-left) invece di un
+   .status-sep a parte: cosi initStatusBar() puo' riordinare gli item coi
+   problemi/down per primi spostando solo nodi .status-item, senza dover
+   tenere sincronizzati separatori distinti. */
+.status-item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    white-space: nowrap;
+    flex-shrink: 0;
+    padding: 0 var(--sp-md);
+    border-left: 1px solid var(--color-border-subtle);
+}
+
+.status-item:first-child {
+    padding-left: 0;
+    border-left: none;
+}
+
+.status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+@keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.45; }
+}
+
+.status-dot.online  { background: var(--color-success); animation: pulse-dot 2.5s ease infinite; box-shadow: var(--glow-green); }
+.status-dot.offline { background: var(--color-danger); }
+.status-dot.slow    { background: var(--color-warning); animation: pulse-dot 1.5s ease infinite; }
+
+.status-name { color: var(--color-text-secondary); font-size: 0.67rem; font-family: var(--font-mono); }
+.status-ms   { color: var(--color-text-muted); font-size: 0.6rem; font-family: var(--font-mono); }
+
+/* Item nascosti dall'accorpamento "Altri": .status-item è display:flex e
+   sovrascriverebbe l'attributo [hidden], quindi va forzato a display:none. */
+.status-item[hidden] { display: none; }
+
+/* Gruppo "Altri" — i servizi ok (verdi) collassati in una voce cliccabile che
+   apre l'elenco con lo stato. Inline restano solo LLM e i giallo/rosso. */
+.status-others { position: relative; cursor: pointer; }
+.status-others .status-name { color: var(--color-text-muted); }
+.status-others.open .status-name { color: var(--color-accent-primary); }
+.status-others-count { color: var(--color-text-muted); font-size: 0.6rem; font-family: var(--font-mono); }
+.status-dot-neutral { background: var(--color-text-muted); }
+.status-others-list {
+    position: fixed; z-index: 60;   /* fixed: esce dall'overflow-x:auto della status-bar */
+    display: flex; flex-direction: column; gap: 0.25rem;
+    padding: 0.5rem 0.65rem; min-width: 200px; max-height: 62vh; overflow-y: auto;
+    background: var(--color-bg-elevated); border: 1px solid var(--color-border-subtle);
+    border-radius: 7px; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55);
+    animation: status-others-in 0.16s ease;
+}
+.status-others-list[hidden] { display: none; }
+.status-others-group { color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.08em;
+    font-size: 0.55rem; font-family: var(--font-mono); margin: 0.35rem 0 0.1rem; }
+.status-others-group:first-child { margin-top: 0; }
+.status-others-row { display: flex; align-items: center; gap: 0.45rem; white-space: nowrap; }
+.status-others-row .status-dot { animation: none; }   /* inventario: non live-monitorati */
+.status-others-row span { color: var(--color-text-secondary); font-size: 0.67rem; font-family: var(--font-mono); }
+@keyframes status-others-in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+
+/* Pagina "Servizi & API" (/settings/api) — elenco strumenti automatici +
+   chiavi gestite. Il valore della chiave è visibile: POE è locale
+   mono-utente, chi apre questa pagina ha già accesso a .env sul filesystem. */
+.api-keys-toggle {
+    flex-shrink: 0;
+    margin-left: auto;
+    display: inline-block;
+    text-decoration: none;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--color-text-muted);
+    background: transparent;
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 0.1rem 0.45rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.api-keys-toggle:hover, .api-keys-toggle:focus {
+    color: var(--color-accent-primary);
+    border-color: var(--color-accent-primary);
+    background: var(--color-bg-elevated);
+}
+
+.api-settings { margin-top: var(--sp-lg); }
+
+.api-section-title {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    letter-spacing: 0.02em;
+    margin: var(--sp-lg) 0 var(--sp-sm);
+    padding-bottom: var(--sp-xs);
+    border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.api-section-title:first-child { margin-top: 0; }
+
+.api-tools-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-md);
+    margin-bottom: var(--sp-xl);
+}
+
+.api-tool-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.api-tool-row {
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    padding: var(--sp-sm) var(--sp-md);
+}
+
+.api-tool-name {
+    display: flex;
+    align-items: baseline;
+    gap: var(--sp-sm);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--color-text-primary);
+}
+
+.api-tool-ioc {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    color: var(--color-accent-primary);
+    background: rgba(250, 140, 22, 0.1);
+    border-radius: var(--radius-sm);
+    padding: 0.05rem 0.4rem;
+}
+
+.api-tool-description {
+    margin: 0.3rem 0 0;
+    font-size: 0.78rem;
+    line-height: 1.5;
+    color: var(--color-text-secondary);
+}
+
+.api-keys-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-sm);
+}
+
+.api-key-status { font-size: 0.65rem; margin-left: auto; }
+.api-key-status-on { color: var(--color-success); }
+.api-key-status-off { color: var(--color-text-muted); }
+
+.api-key-input-row {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-top: var(--sp-sm);
+    flex-wrap: wrap;
+}
+
+.api-key-row input {
+    flex: 1;
+    min-width: 160px;
+    box-sizing: border-box;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    background: var(--color-bg-base);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 0.4rem 0.6rem;
+    color: var(--color-text-primary);
+}
+
+.api-key-row input:focus-visible {
+    outline: 2px solid var(--color-accent-primary);
+    outline-offset: 1px;
+}
+
+.api-key-test-btn { flex-shrink: 0; }
+
+.api-key-test-result {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    flex-basis: 100%;
+}
+
+.api-key-test-ok { color: var(--color-success); }
+.api-key-test-fail { color: var(--color-danger); }
+
+.api-keys-save {
+    align-self: flex-start;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-accent-primary);
+    background: rgba(250, 140, 22, 0.1);
+    border: 1px solid var(--color-accent-primary);
+    border-radius: var(--radius-sm);
+    padding: 0.4rem 0.9rem;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.api-keys-save:hover, .api-keys-save:focus { background: rgba(250, 140, 22, 0.2); }
+
+/* Scelta del motore AI. Un motore non disponibile resta VISIBILE ma spento,
+   con accanto il motivo: nasconderlo lascerebbe credere che non esista, mentre
+   di solito manca solo un passo (avviare Ollama, installare Claude Code). */
+.motore-row {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: .1rem .55rem;
+  align-items: baseline;
+  padding: .5rem .1rem;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.motore-row:last-of-type { border-bottom: 0; }
+.motore-nome { font-weight: 600; }
+.motore-nota {
+  grid-column: 2;
+  font-size: .78rem;
+  color: var(--text-muted);
+  line-height: 1.45;
+}
+.motore-off { cursor: default; opacity: .62; }
+.motore-off .motore-nota { color: var(--amber, var(--text-muted)); }
+
+.api-keys-hint {
+    margin: 0;
+    font-size: 0.65rem;
+    color: var(--color-text-muted);
+    line-height: 1.4;
+}
+
+/* ── Input section ── */
+.input-section { margin-bottom: var(--sp-xl); }
+
+.input-label {
+    font-size: 0.68rem;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    margin-bottom: var(--sp-xs);
+    display: flex;
+    align-items: center;
+    gap: var(--sp-sm);
+    font-family: var(--font-mono);
+}
+
+.input-label::before {
+    content: '>';
+    color: var(--color-accent-primary);
+    font-weight: 700;
+}
+
+/* ── Results header ── */
+.results-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: var(--sp-md);
+    padding-bottom: var(--sp-sm);
+    border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.results-title {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--color-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+}
+
+.results-meta {
+    display: flex;
+    gap: var(--sp-md);
+    align-items: center;
+    font-size: 0.68rem;
+    color: var(--color-text-secondary);
+    font-family: var(--font-mono);
+}
+
+/* ── Entity card espandibile (v0.5) ── */
+@keyframes slide-down {
+    from { opacity: 0; transform: translateY(-4px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+.entity-card {
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-bg-elevated);
+    margin-bottom: 0.3rem;
+    /* overflow: visible — no hidden: i ::after tooltip dei badge devono emergere */
+    transition: border-color var(--transition-base);
+    animation: card-in 0.3s ease-out backwards;
+}
+
+.entity-card:hover { border-color: var(--color-border-strong); }
+.entity-card.expanded { border-color: var(--color-accent-primary); box-shadow: 0 0 0 1px rgba(250,140,22,0.08); }
+
+.entity-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-sm);
+    padding: 0.45rem var(--sp-md);
+    cursor: pointer;
+    user-select: none;
+    transition: background var(--transition-fast);
+}
+
+.entity-row:hover { background: rgba(250,140,22,0.04); }
+
+.entity-expand-icon {
+    font-size: 0.55rem;
+    color: var(--color-text-muted);
+    transition: transform var(--transition-base);
+    flex-shrink: 0;
+    width: 10px;
+}
+
+.entity-card.expanded .entity-expand-icon {
+    transform: rotate(90deg);
+    color: var(--color-accent-primary);
+}
+
+.entity-type-badge {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    color: var(--color-accent-primary);
+    border: 1px solid var(--color-border-strong);
+    padding: 0.06rem 0.38rem;
+    border-radius: var(--radius-sm);
+    text-transform: lowercase;
+    letter-spacing: 0.03em;
+    flex-shrink: 0;
+}
+
+.entity-type-badge::before { content: '['; opacity: 0.6; margin-right: 1px; }
+.entity-type-badge::after  { content: ']'; opacity: 0.6; margin-left: 1px; }
+
+.entity-value {
+    font-family: var(--font-mono);
+    font-size: 0.88rem;
+    color: var(--color-text-primary);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: text-shadow var(--transition-fast);
+}
+
+.entity-card:hover .entity-value { text-shadow: 0 0 6px rgba(250,140,22,0.2); }
+
+.entity-badges {
+    display: flex;
+    gap: 0.3rem;
+    flex-shrink: 0;
+    align-items: center;
+}
+
+/* Pannello espandibile — border-radius solo in basso per allinearsi alla card */
+.entity-panel {
+    display: none;
+    border-top: 1px solid var(--color-border-subtle);
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    padding: var(--sp-md);
+    animation: slide-down 0.18s ease;
+    background: var(--color-bg-surface);
+}
+
+.entity-card.expanded .entity-panel { display: block; }
+
+/* Split view: colonna tool | splitter | colonna AI. Rapporto guidato da
+   --ioc-split (default 50%) sul contenitore .entity-groups; il drag in app.js
+   lo aggiorna in memoria (volatile: reload = torna al default). */
+.entity-groups { --ioc-split: 50%; }
+
+.panel-main-content { display: block; }
+
+.entity-card.expanded .panel-main-content {
+    display: grid;
+    /* Il track sinistro compensa metà splitter (4px) + un gap (var(--sp-md)):
+       così al default 50% le due colonne risultano davvero uguali (senza il
+       calc la destra 1fr sarebbe più stretta di splitter+gap ~40px). Il drag
+       resta monotòno: --ioc-split è sempre la % guida. */
+    grid-template-columns: calc(var(--ioc-split, 50%) - 4px - var(--sp-md)) 8px minmax(0, 1fr);
+    gap: var(--sp-md);
+    align-items: start;
+}
+
+.panel-col-tools, .panel-col-ai { min-width: 0; }
+
+.panel-col-ai {
+    border-left: 1px solid var(--color-border-subtle);
+    padding-left: var(--sp-lg);
+}
+
+/* Linea centrale trascinabile */
+.panel-splitter {
+    align-self: stretch;
+    min-height: 40px;
+    border-radius: var(--radius-sm);
+    background: var(--color-border-subtle);
+    cursor: col-resize;
+    touch-action: none;               /* drag pointer su touch senza scroll */
+    transition: background var(--transition-fast);
+}
+.panel-splitter:hover,
+.panel-splitter.dragging { background: var(--color-accent-primary); }
+.panel-splitter:focus-visible {
+    outline: 2px solid var(--color-accent-primary);
+    outline-offset: 2px;
+}
+
+/* ── Source groups ── */
+.sources-list { display: flex; flex-direction: column; gap: 0.6rem; }
+
+.source-category { display: flex; flex-direction: column; gap: 0.35rem; }
+
+.source-category-title {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--color-accent-primary);
+    letter-spacing: 0.04em;
+    margin: 0 0 0.1rem;
+}
+
+.source-group {
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    transition: border-color var(--transition-fast);
+}
+
+.source-group:hover { border-color: var(--color-border-strong); }
+.source-group.expanded { border-color: var(--color-border-strong); }
+
+.source-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.4rem 0.65rem;
+    background: var(--color-bg-elevated);
+    gap: var(--sp-sm);
+}
+
+.source-name {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex: 1;
+    overflow: hidden;
+}
+
+.source-rank {
+    font-size: 0.58rem;
+    color: var(--color-text-muted);
+    flex-shrink: 0;
+}
+
+.source-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-shrink: 0;
+}
+
+.source-tag {
+    font-family: var(--font-mono);
+    font-size: 0.55rem;
+    padding: 0.06rem 0.32rem;
+    border-radius: var(--radius-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    flex-shrink: 0;
+}
+
+.source-tag.tool     { background: rgba(82,196,26,0.12);  color: #52c41a;                   border: 1px solid rgba(82,196,26,0.30); }
+.source-tag.website  { background: rgba(122,155,168,0.12); color: var(--color-info);          border: 1px solid rgba(122,155,168,0.30); }
+.source-tag.api      { background: rgba(250,140,22,0.10);  color: var(--color-accent-primary); border: 1px solid rgba(250,140,22,0.30); }
+.source-tag.database { background: rgba(155,89,182,0.12);  color: #b37feb;                   border: 1px solid rgba(155,89,182,0.30); }
+.source-tag.osint    { background: rgba(255,174,58,0.10);  color: var(--color-warning);        border: 1px solid rgba(255,174,58,0.30); }
+
+.btn-raw {
+    background: transparent;
+    color: var(--color-text-muted);
+    border: 1px solid var(--color-border-subtle);
+    padding: 0.06rem 0.4rem;
+    font-size: 0.6rem;
+    font-family: var(--font-mono);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition-fast);
+    flex-shrink: 0;
+}
+
+.btn-raw:hover,
+.source-group.expanded .btn-raw {
+    color: var(--color-accent-primary);
+    border-color: var(--color-accent-primary);
+    background: rgba(250,140,22,0.06);
+}
+
+.source-raw-data {
+    display: none;
+    padding: 0.55rem 0.65rem;
+    background: var(--color-bg-base);
+    border-top: 1px solid var(--color-border-subtle);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--color-text-muted);
+    max-height: 200px;
+    overflow-y: auto;
+    animation: fade-in 0.15s ease;
+}
+
+.source-group.expanded .source-raw-data { display: block; }
+
+.source-raw-data pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-all;
+    line-height: 1.5;
+}
+
+/* Panel actions: copy + delete */
+.panel-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: var(--sp-sm);
+    padding-top: var(--sp-sm);
+    border-top: 1px solid var(--color-border-subtle);
+}
+
+/* ── AI button ── */
+.btn-ai {
+    background: transparent;
+    color: var(--color-text-muted);
+    border: 1px solid var(--color-border-subtle);
+    padding: 0.12rem 0.55rem;
+    font-size: 0.62rem;
+    font-family: var(--font-mono);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition-fast);
+    flex-shrink: 0;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.btn-ai:hover {
+    color: var(--color-accent-primary);
+    border-color: var(--color-accent-primary);
+    background: rgba(250,140,22,0.08);
+}
+
+.entity-card.ai-active .btn-ai {
+    color: var(--color-accent-primary);
+    border-color: var(--color-accent-primary);
+    background: rgba(250,140,22,0.12);
+    box-shadow: var(--glow-amber);
+}
+
+/* AI wrapper: colonna destra della split view (bordo/padding sono su .panel-col-ai) */
+.ai-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: var(--sp-md);
+}
+
+.ai-placeholder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 120px;
+    gap: var(--sp-sm);
+    color: var(--color-text-muted);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    text-align: center;
+    padding: var(--sp-md);
+}
+
+.ai-analysis-content {
+    /* Sempre visibile: nel layout split la colonna Analisi AI è la colonna destra
+       fissa. Prima era display:none finché non veniva aggiunto .active — classe
+       che nessuno applicava più (residuo del vecchio toggle a bottone), così
+       placeholder e testo caricato restavano invisibili e la colonna appariva
+       vuota. Ora mostra: placeholder -> "Analisi in corso…" -> testo generato. */
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    color: var(--color-text-secondary);
+    line-height: 1.7;
+    padding: var(--sp-sm);
+    background: rgba(250,140,22,0.04);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border-subtle);
+    animation: fade-in 0.3s ease;
+}
+
+/* ── btn-inline (enrich mini buttons — sostituisce emoji) ── */
+.btn-inline {
+    background: transparent;
+    color: var(--color-text-muted);
+    border: 1px solid var(--color-border-subtle);
+    padding: 0.12rem 0.45rem;
+    font-size: 0.7rem;
+    font-family: var(--font-mono);
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: var(--transition-fast);
+}
+
+.btn-inline:hover {
+    color: var(--color-accent-primary);
+    border-color: var(--color-border-strong);
+    background: rgba(250,140,22,0.06);
+}
+
+/* Enrich data (appare dopo HTMX swap) */
+.enrich-data {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+}
+
+/* ── wiki-badge ── */
+.wiki-badge {
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    padding: 0.04rem 0.3rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border-subtle);
+    color: var(--color-text-muted);
+    text-decoration: none;
+    transition: var(--transition-fast);
+}
+
+.wiki-badge:hover {
+    color: var(--color-info);
+    border-color: rgba(122,155,168,0.4);
+    text-decoration: none;
+}
+
+/* ── Bogon badge ── */
+.badge-bogon {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    padding: 0.05rem 0.32rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid rgba(194,84,61,0.4);
+    color: var(--color-danger);
+    cursor: help;
+}
+
+/* ── Synthesis panel v0.5 ── */
+.synthesis-panel-v5 {
+    margin-top: var(--sp-xl);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-lg);
+    background: var(--color-bg-elevated);
+    overflow: hidden;
+    animation: card-in 0.4s ease-out backwards;
+}
+
+.synthesis-panel-v5 .synthesis-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.6rem var(--sp-md);
+    border-bottom: 1px solid var(--color-border-subtle);
+    background: rgba(250,140,22,0.04);
+}
+
+.synthesis-panel-v5 .synthesis-title {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--color-accent-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+}
+
+.synthesis-panel-v5 .synthesis-model {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    color: var(--color-text-muted);
+}
+
+.synthesis-panel-v5 .synthesis-body {
+    padding: var(--sp-md);
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    color: var(--color-text-secondary);
+    line-height: 1.75;
+}
+
+/* v0.7 — Analisi AI per-entità: ora colonna destra (vedi .panel-col-ai) */
+.ai-section-title { font-family: var(--font-mono); font-size: 0.72rem; color: var(--color-accent-primary); letter-spacing: 0.04em; margin-bottom: 0.4rem; }
+.ai-text { font-size: 0.8rem; line-height: 1.6; color: var(--color-text-secondary); }
+.ai-text p { margin: 0 0 0.4rem; }
+.ai-text ul { margin: 0.2rem 0 0.4rem 1rem; }
+.ai-loading { font-style: italic; color: var(--color-text-tertiary); font-size: 0.78rem; }
+.ai-error { color: var(--color-danger); }
+
+/* ── Responsive: sotto 768px la split diventa colonna singola ── */
+@media (max-width: 768px) {
+    .entity-card.expanded .panel-main-content {
+        grid-template-columns: 1fr;
+    }
+    .panel-splitter { display: none; }
+    .panel-col-ai {
+        border-left: none;
+        border-top: 1px solid var(--color-border-subtle);
+        padding-left: 0;
+        padding-top: var(--sp-md);
+        margin-top: var(--sp-md);
+    }
+}
+
+@media (max-width: 640px) {
+    .header-top { padding: var(--sp-md); }
+    .status-bar { padding: 0.3rem var(--sp-md); }
+    .brand-subtitle { display: none; }
+    .header-nav .nav-link { font-size: 0.65rem; padding: 0.15rem 0.4rem; }
+}
+
+/* ── v0.5.1 — bottoni più grandi (area click ≥30px) + stella recenti ── */
+.kept-btn {
+    min-height: 32px;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.8rem;
+}
+.delete-obs-btn {
+    min-width: 32px;
+    min-height: 32px;
+    font-size: 1rem;
+    line-height: 1;
+}
+.entity-delete-btn {
+    min-width: 30px;
+    min-height: 30px;
+    font-size: 0.95rem;
+}
+.history-star-form { display: inline-flex; margin: 0; }
+.history-star {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 1.05rem;
+    min-width: 30px;
+    min-height: 30px;
+    color: var(--color-text-muted);
+    transition: color var(--transition-fast);
+}
+.history-star:hover { color: var(--color-accent-primary); }
+.history-star-active { color: var(--color-accent-primary); }
+
+/* v0.5.1b — rinforzo dimensioni simboli (Preferiti / X / stella) */
+.kept-btn, .delete-obs-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.kept-btn { min-height: 34px; font-size: 0.9rem; padding: 0.4rem 0.85rem; }
+.delete-obs-btn { min-width: 36px; min-height: 36px; font-size: 1.25rem; }
+/* la X di rimozione entità era nascosta dietro .entity-item:hover (classe mai
+   applicata alla card v0.5): la rendiamo sempre visibile e più grande. */
+.entity-card .entity-delete-btn { opacity: 1; }
+.entity-delete-btn {
+    min-width: 30px; min-height: 30px; font-size: 1.1rem;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.history-star { font-size: 1.25rem; }
+.history-li { display: flex; align-items: center; gap: 0.4rem; }
+.history-li .history-item { flex: 1; }
+
+/* v0.5.1c — header osservazione più sottile + stella header più grande */
+.result-card { padding: var(--sp-md); }
+.result-header { align-items: center; padding-bottom: var(--sp-sm); margin-bottom: var(--sp-sm); }
+.result-header .kept-btn { font-size: 1.2rem; min-height: 30px; padding: 0.15rem 0.45rem; }
+
+/* v0.5.1d — fonti: vista formattata (kv-grid) di default, raw on demand */
+.source-header { cursor: pointer; }
+.source-group .source-body { display: none; }
+.source-group.expanded .source-body { display: block; }
+.kv-grid {
+    display: grid; grid-template-columns: auto 1fr; gap: 0.14rem 0.85rem;
+    padding: 0.5rem 0.7rem; margin: 0;
+    font-family: var(--font-mono); font-size: 0.74rem;
+}
+.kv-grid dt { color: var(--color-text-muted); white-space: nowrap; }
+.kv-grid dd { color: var(--color-text-primary); margin: 0; word-break: break-all; }
+
+/* Bundle Browser (link_bundle_block): tanti link in una riga sola, più
+   spazio tra le righe e link più in evidenza rispetto al kv-grid compatto
+   usato per poche coppie chiave/valore nelle altre fonti. */
+.link-bundle-grid { gap: 0.5rem 0.85rem; }
+.link-bundle-grid dt { font-weight: 600; color: var(--color-text-secondary); }
+.link-bundle-grid dd a {
+    text-decoration: underline;
+    text-decoration-color: rgba(250, 140, 22, 0.35);
+    text-underline-offset: 2px;
+}
+.link-bundle-grid dd a:hover { text-decoration-color: var(--color-accent-primary); }
+/* override regola v0.5: il pre grezzo non si mostra di default, solo con show-raw */
+.source-group.expanded .source-raw-data { display: none; margin: 0; }
+.source-group.expanded.show-raw .kv-grid { display: none; }
+.source-group.expanded.show-raw .source-raw-data { display: block; }
+
+/* v0.5.1e — header compatti (più spazio agli IOC) + enrich-data + badge LLM */
+.header-top { padding-top: 0.4rem; padding-bottom: 0.4rem; }
+.result-card { padding: var(--sp-sm) var(--sp-md); }
+.result-header { padding-bottom: 0.3rem; margin-bottom: 0.35rem; }
+.enrich-data { display: inline-flex; align-items: center; gap: 0.3rem; white-space: nowrap; }
+.geo-flag { cursor: help; color: var(--color-text-secondary); }
+.badge-llm { color: var(--color-accent-primary); }
+
+/* flush DB — solo testing, discreto in footer */
+.flush-db-btn {
+    margin-left: 0.75rem; font-family: var(--font-mono); font-size: 0.6rem;
+    background: transparent; color: var(--color-text-muted);
+    border: 1px solid var(--color-border-subtle); border-radius: var(--radius-sm);
+    padding: 0.1rem 0.45rem; cursor: pointer; opacity: 0.5;
+}
+.flush-db-btn:hover { opacity: 1; color: #ff4d4f; border-color: #ff4d4f; }
+
+/* v0.5.1f — separatore enrich-data + badge dominio correlato + più spazio IOC */
+.enrich-data .sep { color: var(--color-text-muted); margin: 0 0.1rem; }
+.geo-isp { color: var(--color-text-secondary); }
+.badge-derived { color: var(--color-accent-secondary, var(--color-text-secondary)); }
+.site-main { padding-top: var(--sp-md); padding-bottom: var(--sp-md); }
+.poe-greeting { margin: 0 0 var(--sp-sm); font-size: 0.95rem; }
+.input-section { margin-bottom: var(--sp-md); }
+
+/* v0.5.1g — ordine badge (INFO · correlazione · TAG separati) + whois-missing
+   + layout più largo (meno bordi) + delete IOC robusto */
+.entity-tags {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    margin-left: 0.4rem; padding-left: 0.5rem;
+    border-left: 1px solid var(--color-border-subtle);
+}
+.badge-whois-missing { color: #e0b341; border-color: #e0b341; }
+.entity-delete-btn {
+    display: inline-flex; align-items: center; gap: 0.25rem;
+    background: transparent; color: var(--color-text-muted);
+    border: 1px solid var(--color-border-subtle); border-radius: var(--radius-sm);
+    padding: 0.25rem 0.55rem; font-family: var(--font-mono); font-size: 0.7rem;
+    cursor: pointer; min-height: 28px; min-width: auto;
+}
+.entity-delete-btn:hover { color: #ff4d4f; border-color: #ff4d4f; }
+/* sfrutta di più la pagina: più larghezza, card senza bordo */
+:root { --content-max-width: 1380px; }
+.result-card { border-color: transparent; padding: var(--sp-sm) var(--sp-md); }
+.site-main { padding-left: var(--sp-md); padding-right: var(--sp-md); }
+
+/* v0.6 — badge pivot + liste vista pivot */
+.pivot-badge {
+    font-family: var(--font-mono); font-size: 0.62rem;
+    color: var(--color-accent-primary); border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-sm); padding: 0.05rem 0.35rem; text-decoration: none;
+}
+.pivot-badge:hover { background: rgba(250,140,22,0.08); }
+.related-list, .obs-list { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+.related-item { display: flex; align-items: center; gap: 0.5rem; font-family: var(--font-mono); font-size: 0.8rem; }
+.related-shared { color: var(--color-text-muted); font-size: 0.7rem; }
+
+/* v0.6 — reputation: bottone refresh feed */
+.feed-refresh-btn {
+    margin-left: 0.75rem; font-family: var(--font-mono); font-size: 0.6rem;
+    background: transparent; color: var(--color-text-muted);
+    border: 1px solid var(--color-border-subtle); border-radius: var(--radius-sm);
+    padding: 0.1rem 0.45rem; cursor: pointer; opacity: 0.6;
+}
+.feed-refresh-btn:hover { opacity: 1; color: var(--color-accent-primary); border-color: var(--color-accent-primary); }
+
+/* v0.6.2 — rischio unificato: badge lettera compatto, stesso linguaggio
+   visivo di .conf-badge (affidabilità). "Malevolo" non è più un badge a
+   parte: la reputation è già un fattore del punteggio, confluisce nel
+   tooltip del rischio. Nessun badge per "basso" (rumore, non segnale). */
+.risk-letter {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 1.3rem; height: 1.3rem; padding: 0 0.3rem;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono); font-size: 0.65rem; font-weight: 700;
+    flex-shrink: 0; cursor: pointer;
+}
+.risk-letter-sospetto {
+    background: rgba(255, 174, 58, 0.14); color: #ffae3a;
+    border: 1px solid rgba(255, 174, 58, 0.45);
+}
+.risk-letter-critico {
+    background: rgba(255, 77, 79, 0.18); color: #ff4d4f;
+    border: 1px solid rgba(255, 77, 79, 0.55);
+}
+.risk-summary {
+    font-family: var(--font-mono); font-size: 0.72rem;
+    padding: 0.1rem 0.5rem; border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border-strong);
+}
+.risk-summary-critico { color: #ff4d4f; border-color: #ff4d4f; }
+.risk-summary-sospetto { color: #ffae3a; border-color: #ffae3a; }
+.risk-summary-basso { color: var(--color-text-secondary); }
+
+/* v0.6.2 — catalogo OSINT: risorse esterne per IOC */
+.catalog-wrapper { margin-top: var(--sp-sm); }
+.catalog-section-title {
+    font-family: var(--font-mono); font-size: 0.72rem;
+    color: var(--color-text-secondary); margin-bottom: 0.3rem;
+}
+.catalog-list { list-style: none; padding: 0; margin: 0; display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.catalog-item a {
+    display: inline-block; font-family: var(--font-mono); font-size: 0.72rem;
+    padding: 0.15rem 0.5rem; border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-sm); color: var(--color-text-secondary);
+    text-decoration: none;
+}
+.catalog-item a:hover { color: var(--color-accent-primary); border-color: var(--color-accent-primary); }
+
+/* v0.6.3 — live-lookup (crt.sh/urlscan.io/NVD/Cymru) parte da sola al primo
+   expand della entity-card (niente più bottone "Interroga"): occupa una riga
+   intera nel catalog-list altrimenti a pillole in wrap. */
+.catalog-item-lookup {
+    flex-basis: 100%;
+    display: flex; flex-direction: column; gap: 0.25rem;
+}
+.live-lookup-label {
+    font-family: var(--font-mono); font-size: 0.72rem;
+    color: var(--color-text-secondary);
+}
+.live-lookup-loading {
+    font-family: var(--font-mono); font-size: 0.72rem;
+    color: var(--color-text-muted); font-style: italic;
+}
+.lookup-result {
+    margin-top: 0.3rem; font-family: var(--font-mono); font-size: 0.72rem;
+    color: var(--color-text-secondary); border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-sm); padding: 0.4rem 0.5rem;
+}
+.lookup-error { color: var(--color-text-muted); border-color: var(--color-border-subtle); }
+.lookup-subdomains {
+    list-style: none; padding: 0; margin: 0.3rem 0 0; max-height: 6rem;
+    overflow-y: auto; display: flex; flex-direction: column; gap: 0.1rem;
+}
+.lookup-desc { margin-top: 0.3rem; color: var(--color-text-secondary); line-height: 1.4; }
+
+/* ── Selettore LLM "POE-AI" nella status bar ── */
+.status-llm { position: relative; cursor: pointer; }
+.poe-ai-current { font-family: var(--font-mono); font-size: 0.62rem; color: var(--color-text-muted); margin-left: 0.25rem; }
+.poe-ai-picker {
+    /* fixed + posizione via JS: la .status-bar ha overflow-x:auto (→ overflow-y
+       computa a auto), che clipperebbe un dropdown position:absolute. Stessa
+       tecnica del popover "Altro" (.status-others-list). */
+    position: fixed; z-index: 60;
+    min-width: 220px; padding: var(--sp-sm);
+    background: var(--color-bg-elevated);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-lg);
+    display: flex; flex-direction: column; gap: 0.3rem;
+    font-family: var(--font-mono); font-size: 0.72rem;
+    cursor: default;
+}
+/* display:flex sovrascriverebbe [hidden] (UA display:none) → il picker resterebbe
+   sempre visibile come box vuoto sopra la status bar. Forziamo display:none.
+   Stesso trucco di .status-others-list[hidden] e .status-item[hidden]. */
+.poe-ai-picker[hidden] { display: none; }
+.poe-ai-title { font-size: 0.62rem; color: var(--color-accent-primary); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 0.15rem; }
+.poe-ai-row, .poe-ai-model { display: flex; align-items: center; gap: 0.4rem; color: var(--color-text-secondary); }
+.poe-ai-models { display: flex; flex-direction: column; gap: 0.25rem; padding-left: 1rem; border-left: 1px solid var(--color-border-subtle); margin-left: 0.2rem; }
+/* display:flex sovrascrive [hidden]: senza questo i modelli Claude
+   (Sonnet/Opus/Haiku) resterebbero visibili anche in modalità Locale. */
+.poe-ai-models[hidden] { display: none; }
+.poe-ai-warn { color: var(--color-warning); font-size: 0.62rem; margin: 0.2rem 0 0; line-height: 1.4; }
+.poe-ai-actions { display: flex; align-items: center; gap: 0.5rem; margin-top: 0.2rem; }
+.poe-ai-apply {
+    background: transparent; color: var(--color-accent-primary);
+    border: 1px solid var(--color-border-strong); border-radius: var(--radius-sm);
+    padding: 0.2rem 0.6rem; font-family: var(--font-mono); font-size: 0.68rem; cursor: pointer;
+}
+.poe-ai-apply:hover { background: rgba(250,140,22,0.08); }
+.poe-ai-msg { font-size: 0.66rem; color: var(--color-text-muted); }

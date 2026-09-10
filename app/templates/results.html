@@ -1,0 +1,12 @@
+{% import "_macros.html" as m %}
+
+{# Frammento principale: va in #results (target del form). #}
+{{ m.render_entities(grouped_entities, observation_id, total, score=score, accuracy=accuracy, kept=kept, label=label, show_export=show_export|default(false, true), pivot_counts=pivot_counts, risk_by_value=risk_by_value, observation_risk=observation_risk, catalog_resources=catalog_resources, private_ip_info=private_ip_info, live_resource_ids=live_resource_ids) }}
+
+{# Sintesi investigativa disponibile anche in anteprima "Osserva" (solo con >1 IOC). #}
+{{ m.render_synthesis(observation_id, total) }}
+
+{# Frammento out-of-band: aggiorna la sezione "Osservazioni recenti". #}
+<section id="history" class="history" aria-labelledby="history-heading" hx-swap-oob="true">
+    {% include "_history.html" %}
+</section>

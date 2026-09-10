@@ -1,0 +1,35 @@
+# POE-OSINT — ignore. Vale sia annidato nel repo di lavoro, sia come .gitignore
+# di radice quando il modulo viene pubblicato come repo a se'
+# (vedi scripts/publish-osint.sh).
+
+# Ambiente
+.venv/
+venv/
+.env
+.uv-cache/
+
+# Dati: i DB contengono osservazioni reali con PII. Mai in un commit.
+data/*.db
+data/*.db-*
+data/*.db.bak
+*.db
+*.db-shm
+*.db-wal
+*.db.bak
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Documentazione di lavoro interna (spec, piani, brainstorm): non pubblica.
+docs/
+
+# IDE / OS
+.vscode/
+.idea/
+.DS_Store

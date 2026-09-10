@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
+    <title>{% block title %}POE — Personal Observation Engine{% endblock %}</title>
+
+    {# Google Fonts: preconnect per parallelizzare la TLS handshake col DNS lookup,
+       poi un solo link ?family=... che racchiude tutte le famiglie usate.
+       v0.3 collassa al solo tema tech-mono: monospace IBM Plex + Orbitron per il logo. #}
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Orbitron:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    {# favicon + apple-touch: riusa il logo. Senza questi, il browser sonda
+       /favicon.ico e /apple-touch-icon*.png → 404 ripetuti nei log. #}
+    <link rel="icon" type="image/png" href="/static/logo.png?v=0.6.3">
+    <link rel="apple-touch-icon" href="/static/logo.png?v=0.6.3">
+
+    <link rel="stylesheet" href="/static/style.css?v=0.7.7">
+    {# htmx servito in locale (non da CDN): POE è offline/local-first e privacy-first —
+       una CDN lenta/bloccata lasciava i lookup live bloccati su "Verifica in corso". #}
+    <script src="/static/htmx.min.js?v=2.0.4" defer></script>
+    {% block head %}{% endblock %}
+</head>
+<body>
+    <header class="site-header">
+        <div class="header-top">
+            <div class="brand">
+                <a href="/" class="brand-link">
+                    <img class="brand-eye" src="/static/logo.png?v=0.6.3" alt="POE" aria-hidden="true">
+                    <span class="brand-name">POE</span>
+                </a>
+                <span class="brand-subtitle">Personal Observation Engine</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:0.75rem;flex-wrap:wrap;">
+                <span class="version-badge">v0.5.0</span>
+                <nav class="header-nav" aria-label="Navigazione principale">
+                    <a href="/" class="nav-link {% block nav_analisi %}{% endblock %}">Analisi</a>
+                    <a href="/database" class="nav-link {% block nav_database %}{% endblock %}">Database</a>
+                </nav>
+            </div>
+        </div>
+
+        {# Status bar servizi — aggiornata via polling /api/status (vedi app.js initStatusBar) #}
+        <div class="status-bar-wrapper">
+            <div class="status-bar" aria-label="Stato servizi" id="status-bar">
+                <span class="status-label">Servizi</span>
+                {# Solo i servizi con un segnale di stato reale (non un "online"
+                   fisso che non significa nulla) — vedi app/main.py::api_status.
+                   Ordine qui = default al primo caricamento; da lì in poi
+                   initStatusBar() riordina coi problemi/down per primi. #}
+                <div class="status-items">
+                    <div class="status-item status-llm" data-svc="llm" id="poe-ai-toggle"
+                         role="button" tabindex="0" aria-haspopup="true" aria-expanded="false"
+                         aria-label="POE-AI: scegli il motore LLM (Locale o Claude)"
+                         data-tooltip="Scegli il motore LLM (Locale o Claude)">
+                        <div class="status-dot" title="LLM"></div>
+                        <span class="status-name">POE-AI</span>
+                        <span class="poe-ai-current"></span>
+                        <div class="poe-ai-picker" hidden></div>
+                    </div>
+                    <div class="status-item" data-svc="reputation">
+                        <div class="status-dot" title="Feed reputation (freschezza)"></div>
+                        <span class="status-name">Reputation feeds</span>
+                    </div>
+                    <div class="status-item" data-svc="abuseipdb">
+                        <div class="status-dot" title="AbuseIPDB (ping sito, non API)"></div>
+                        <span class="status-name">AbuseIPDB</span>
+                    </div>
+                    <div class="status-item" data-svc="virustotal">
+                        <div class="status-dot" title="VirusTotal (ping sito, non API)"></div>
+                        <span class="status-name">VirusTotal</span>
+                    </div>
+                    <div class="status-item" data-svc="shodan">
+                        <div class="status-dot" title="Shodan (ping sito, non API)"></div>
+                        <span class="status-name">Shodan</span>
+                    </div>
+                    {# "Altro": inventario di tutti gli altri siti/tool del catalogo,
+                       popolato da app.js via /api/tools. Espandibile, non live-monitorato. #}
+                    <div class="status-item status-others" data-svc="others" role="button" tabindex="0" aria-expanded="false" hidden>
+                        <div class="status-dot status-dot-neutral" title="Altri tool/siti del catalogo"></div>
+                        <span class="status-name">Altro</span>
+                        <span class="status-others-count"></span>
+                        <div class="status-others-list" hidden></div>
+                    </div>
+                </div>
+                <a href="/settings/api" class="api-keys-toggle" title="Servizi & chiavi API">API</a>
+            </div>
+        </div>
+
+        {% block header_tagline %}{% endblock %}
+    </header>
+
+    <main class="site-main">
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer class="site-footer">
+        <small>POE v0.5.0 · tutto in locale · nessun dato inviato</small>
+        <button type="button" class="flush-db-btn"
+                hx-post="/admin/reset"
+                hx-confirm="Svuotare TUTTO il database? Solo per test — irreversibile."
+                hx-swap="none"
+                title="Svuota il database (solo testing)">flush DB</button>
+        <button type="button" class="feed-refresh-btn"
+                hx-post="/admin/reputation/refresh"
+                hx-swap="none"
+                title="Aggiorna i feed reputation (abuse.ch)">&#8635; feed</button>
+    </footer>
+
+    <script src="/static/app.js?v=0.7.7" defer></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

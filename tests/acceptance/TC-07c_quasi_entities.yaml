@@ -1,0 +1,33 @@
+# TC-07c — Testo con quasi-entita
+# Priorita alta. Stringhe che assomigliano a entita ma non lo sono.
+# La pipeline non deve produrre falsi positivi su questi pattern.
+
+metadata:
+  id: TC-07c
+  title: "Testo con quasi-entita (falsi positivi potenziali)"
+  priority: high
+  coverage_tags: [edge_case, false_positives]
+
+input:
+  text: |-
+    Il numero di protocollo e 12345 e il codice pratica ABC-2024.
+    La versione del software e la 3.2.1 e gira su porta 8080.
+    Il meeting e fissato per le ore 14.30 del giorno 15.03.2025.
+
+    Mario ha detto che il rapporto costa 1.500 euro e che il margine
+    e del 12.5 percento. Il codice prodotto e XK-44921-B.
+
+    Riferimento interno: sezione 4, paragrafo 2, comma 3.
+    Nota: vedi allegato n. 7 a pagina 42.
+
+must_extract:
+  entities: []
+
+must_not_extract:
+  entities:
+    # 3.2.1 non e un IP (solo 3 ottetti)
+    - type: ipv4
+      value: 3.2.1
+    # 12345 non e un phone
+    - type: phone
+      value: "12345"

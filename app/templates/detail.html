@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+
+{% block title %}{{ observation.label if observation.label else 'Osservazione #' ~ observation.id }} — POE{% endblock %}
+
+{% block content %}
+{# Breadcrumb + titolo — dentro content, non nell'header sticky #}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp-md);padding-bottom:var(--sp-sm);border-bottom:1px solid var(--color-border-subtle);">
+    <div>
+        <p style="font-family:var(--font-mono);font-size:0.82rem;color:var(--color-text-primary);font-weight:600;margin:0;">
+            {{ observation.label if observation.label else 'Osservazione #' ~ observation.id }}
+        </p>
+        <p style="font-family:var(--font-mono);font-size:0.68rem;color:var(--color-text-muted);margin:0.1rem 0 0;">
+            {{ observation.timestamp }}
+        </p>
+    </div>
+    <a href="/" class="back-link" style="font-size:0.75rem;">&#8592; home</a>
+</div>
+
+<section class="original-input" aria-labelledby="input-heading">
+    <h2 id="input-heading">Input originale</h2>
+    <pre>{{ observation.raw_input }}</pre>
+</section>
+
+<section aria-labelledby="entities-heading">
+    <h2 id="entities-heading" class="sr-only">Entità estratte</h2>
+    {{ m.render_entities(grouped_entities, observation.id, total, score=score, accuracy=accuracy, kept=kept, label=label, show_export=true, pivot_counts=pivot_counts, risk_by_value=risk_by_value, observation_risk=observation_risk, catalog_resources=catalog_resources, private_ip_info=private_ip_info, live_resource_ids=live_resource_ids) }}
+</section>
+
+{# Sintesi Intelligence: mostrata solo con più di un IOC (vedi render_synthesis in _macros.html). #}
+{{ m.render_synthesis(observation.id, total, observation.synthesis_text, observation.synthesis_model) }}
+{% endblock %}

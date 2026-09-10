@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block title %}Servizi & API — POE{% endblock %}
+
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--sp-md);padding-bottom:var(--sp-sm);border-bottom:1px solid var(--color-border-subtle);">
+    <h2 style="font-family:var(--font-mono);font-size:0.95rem;margin:0;">Servizi & API</h2>
+    <a href="/" class="back-link" style="font-size:0.75rem;">&#8592; home</a>
+</div>
+
+<section class="api-settings" aria-labelledby="api-settings-heading">
+    <h3 id="api-settings-heading" class="sr-only">Strumenti e chiavi API</h3>
+    <p class="poe-greeting" style="margin-top:0;">
+        Strumenti che POE usa per arricchire le osservazioni: cosa fanno, su quali
+        IOC lavorano, e le chiavi delle API a pagamento.
+    </p>
+
+    <div id="api-keys-panel-body">
+        {{ panel_html | safe }}
+    </div>
+</section>
+{% endblock %}

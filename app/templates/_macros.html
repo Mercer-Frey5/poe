@@ -1,0 +1,686 @@
+{# _macros.html — macro UI di POE v0.4.
+   Nota Jinja2: le variabili definite fuori dalla macro NON sono visibili
+   dentro il body della macro (scope isolato). Tutti i dati statici
+   (tooltip testo, wiki body) vengono inlineati direttamente. #}
+
+{% macro _humanize_factor(f) -%}
+{%- if f.startswith('reputation:') -%}presente in feed di minaccia ({{ f.split(':', 1)[1] }})
+{%- elif f == 'tld_sospetto' -%}dominio di primo livello (TLD) storicamente associato ad abusi
+{%- elif f.startswith('correlato_in_') -%}{{ f.split('_')[2] }} osservazioni diverse contengono questo indicatore
+{%- elif f == 'dominio_giovane' -%}dominio registrato di recente
+{%- else -%}{{ f }}
+{%- endif -%}
+{%- endmacro %}
+
+{# Corpo del tooltip rischio: punteggio + motivi elencati + (se presente) il
+   dettaglio reputation, invece di un badge "malevolo" separato — la reputation
+   è già uno dei fattori che compone il punteggio di rischio stesso. Caso limite:
+   IP bogon con un match reputation (raro, ma il refresh feed non guarda il
+   bogon) -> risk.level è None (bogon azzera sempre il punteggio numerico), il
+   tooltip lo spiega invece di mostrare un punteggio fuorviante. #}
+{% macro _risk_tooltip_body(risk, rep) -%}
+{%- set rep_hit = (rep and rep.get('malicious')) -%}
+{%- if risk and risk.level -%}
+{%- set ns = namespace(body="Punteggio " ~ risk.score ~ " su una scala aperta (più alto = più pericoloso).\n\nPerché:") -%}
+{%- for f in risk.factors -%}
+{%- set ns.body = ns.body ~ "\n• " ~ _humanize_factor(f) -%}
+{%- endfor -%}
+{%- else -%}
+{%- set ns = namespace(body="Indirizzo non instradabile (privato/riservato): il punteggio numerico di rischio non si applica qui, non è un target esterno attaccabile.") -%}
+{%- endif -%}
+{%- if rep_hit -%}
+{%- set srcs = rep.get('sources', []) -%}
+{%- set ns.body = ns.body ~ "\n\nConfermato da " ~ (srcs | length) ~ (" fonti" if (srcs | length) != 1 else " fonte") ~ " di threat-intelligence" -%}
+{%- if rep.get('threat') -%}{%- set ns.body = ns.body ~ " (" ~ rep.threat ~ ")" -%}{%- endif -%}
+{%- if rep.get('updated_at') -%}{%- set ns.body = ns.body ~ ", ultimo aggiornamento " ~ rep.updated_at[:10] -%}{%- endif -%}
+{%- set ns.body = ns.body ~ "." -%}
+{%- endif -%}
+{%- set ns.body = ns.body ~ "\n\nSegnale automatico da fonti pubbliche — non un verdetto assoluto, incrocia sempre con altre fonti." -%}
+{{- ns.body -}}
+{%- endmacro %}
+
+{# Corpo del tooltip affidabilità (L/M/H/C): solo cosa fa il tag e a cosa
+   serve, senza rimandi incrociati al badge di rischio (testo troppo denso
+   altrimenti). CRITICAL è l'unico gradino che parla anche di corroborazione
+   reputation, perché è l'unico derivato anche da quel segnale. #}
+{% macro _conf_tooltip_body(level) -%}
+{%- if level == 'critical' -%}
+{{ "Estrazione ad alta confidenza (pattern chiaro) corroborata da almeno 2 fonti indipendenti di threat-intelligence concordanti. Il livello di affidabilità più alto: sia il riconoscimento del valore sia la sua conferma esterna sono solidi." }}
+{%- elif level == 'high' -%}
+{{ "Alta probabilità che questo valore sia stato riconosciuto ed estratto correttamente dal testo originale (pattern chiaro, formato standard)." }}
+{%- elif level == 'low' -%}
+{{ "Estrazione meno certa: il valore potrebbe essere stato interpretato in modo impreciso dal testo originale (formato ambiguo, contesto debole, o estratto da un modello LLM). Verifica il dato originale prima di usarlo." }}
+{%- else -%}
+{{ "Buona probabilità di estrazione corretta, ma il formato o il contesto lascia un margine di ambiguità maggiore rispetto a un match ad alta confidenza." }}
+{%- endif -%}
+{%- endmacro %}
+
+
+{% macro render_entities(grouped, observation_id, total, score=0, accuracy=0, kept=false, label=none, show_export=false, pivot_counts=none, risk_by_value=none, observation_risk=none, catalog_resources=none, private_ip_info=none, live_resource_ids=none) %}
+<article class="result-card" data-observation-id="{{ observation_id }}">
+    <header class="result-header">
+
+        {# ── Label / rinomina ── #}
+        <div class="obs-label-area" id="obs-label-area-{{ observation_id }}">
+            <div class="obs-label-display" id="obs-label-display-{{ observation_id }}">
+                <span class="obs-title-text">{{ label if label else 'Osservazione #' ~ observation_id }}</span>
+                <button type="button"
+                        class="label-edit-trigger"
+                        data-obs-id="{{ observation_id }}"
+                        title="Rinomina osservazione">&#x270E;</button>
+            </div>
+            <form class="obs-label-form obs-label-form--hidden"
+                  id="obs-label-form-{{ observation_id }}"
+                  hx-post="/e/{{ observation_id }}/label"
+                  hx-target="#obs-label-area-{{ observation_id }}"
+                  hx-swap="innerHTML">
+                <input type="text" name="label"
+                       value="{{ label or '' }}"
+                       placeholder="Nome osservazione…"
+                       class="label-input">
+                <button type="submit" class="label-save-btn" title="Salva">&#x2713;</button>
+                <button type="button" class="label-cancel-btn"
+                        data-obs-id="{{ observation_id }}" title="Annulla">&#x2715;</button>
+            </form>
+        </div>
+
+        {# ── Meta + azioni ── #}
+        <div class="result-header-right">
+            <span class="meta">
+                <strong>{{ total }}</strong> entità
+                {% if grouped %}· {{ grouped|length }} tipi{% endif %}
+            </span>
+            {% if accuracy %}
+            <span class="accuracy-badge conf-accuracy-{{ 'high' if accuracy >= 80 else ('medium' if accuracy >= 55 else 'low') }}"
+                  data-tooltip="Media accuratezza stimata delle entità estratte">~{{ accuracy }}%</span>
+            {% endif %}
+            {% if observation_risk and observation_risk.overall_level %}
+            <span class="risk-summary risk-summary-{{ observation_risk.overall_level }}"
+                  title="Rischio aggregato dell'osservazione">
+                {%- if observation_risk.counts.critico %}&#9888; {{ observation_risk.counts.critico }} malevoli{% endif -%}
+                {%- if observation_risk.counts.sospetto %} · &#9651; {{ observation_risk.counts.sospetto }} sospetti{% endif -%}
+                {%- if observation_risk.counts.basso %} · {{ observation_risk.counts.basso }} bassi{% endif -%}
+            </span>
+            {% endif %}
+            {{ render_kept_toggle(observation_id, kept) }}
+            {% if show_export %}
+            <div class="export-dropdown">
+                <button type="button" class="export-btn export-menu-toggle" aria-haspopup="true" aria-expanded="false">&#8595; Scarica</button>
+                <div class="export-menu">
+                    <a href="/e/{{ observation_id }}/export.md" title="Report dati: rischio/reputation/correlazioni, nessuna elaborazione AI">RAW — Dati — .md</a>
+                    <a href="/e/{{ observation_id }}/export-ai.pdf" title="Report PDF ben formattato + analisi investigativa generata dall'AI locale">AI — Analisi — .pdf</a>
+                </div>
+            </div>
+            <button type="button"
+                    class="refresh-obs-btn"
+                    hx-post="/e/{{ observation_id }}/refresh"
+                    hx-target="article.result-card[data-observation-id='{{ observation_id }}']"
+                    hx-swap="outerHTML"
+                    hx-indicator="#refresh-spin-{{ observation_id }}"
+                    title="Ricontrolla: ri-arricchisce reputation/geo/WHOIS di tutte le entità"
+                    aria-label="Ricontrolla">
+                &#8635;
+            </button>
+            <span id="refresh-spin-{{ observation_id }}" class="htmx-indicator">&#8635;</span>
+            {% endif %}
+            <button type="button"
+                    class="delete-obs-btn"
+                    hx-delete="/e/{{ observation_id }}"
+                    hx-target="article.result-card[data-observation-id='{{ observation_id }}']"
+                    hx-swap="delete"
+                    hx-confirm="Eliminare l'osservazione #{{ observation_id }}? L'azione non è reversibile."
+                    {% if show_export %}hx-on::after-request="window.location.href='/'"{% endif %}
+                    title="Elimina osservazione"
+                    aria-label="Elimina osservazione #{{ observation_id }}">&#x2715;</button>
+            <button type="button"
+                    class="extract-ai-btn"
+                    hx-post="/e/{{ observation_id }}/extract-ai"
+                    hx-target="article.result-card[data-observation-id='{{ observation_id }}']"
+                    hx-swap="outerHTML"
+                    hx-indicator="#extract-ai-spin-{{ observation_id }}"
+                    title="Estrai organizzazioni e indirizzi con l'AI (on-demand)">
+                &#10024; LLM Enricher
+            </button>
+            <span id="extract-ai-spin-{{ observation_id }}" class="htmx-indicator">&#8635;</span>
+        </div>
+    </header>
+
+    {% if grouped %}
+    <div class="entity-groups">
+        {% for type, items in grouped.items() %}
+        <section class="entity-group" aria-labelledby="group-{{ observation_id }}-{{ type }}">
+            <h4 id="group-{{ observation_id }}-{{ type }}">
+                <span class="type-badge type-{{ type }}">{{ type }}</span>
+                <span class="count">{{ items|length }}</span>
+            </h4>
+            <div class="entity-list">
+                {% for item in items %}
+                {# ── Entity card espandibile (v0.5) ── #}
+                <div class="entity-card">
+                    <div class="entity-row">
+                        <span class="entity-expand-icon" aria-hidden="true">&#9658;</span>
+                        <span class="entity-type-badge">{{ type }}</span>
+                        <code class="entity-value" title="{{ item.value }}">{{ item.value }}</code>
+
+                        <div class="entity-badges">
+                            {# Enrich (geo IP / registrar dominio): mostrato PRIMA dei badge #}
+                            {% if type == 'ipv4' and not item.metadata.get('bogon') and item.metadata.get('country') %}
+                            <span class="enrich-data">
+                                {% if item.metadata.get('isp') %}<span class="geo-isp">{{ item.metadata.isp }}</span>{% endif %}
+                                {% if item.metadata.get('country_code') %}{% if item.metadata.get('isp') %}<span class="sep">·</span>{% endif %}<span class="geo-flag" title="{{ item.metadata.country }}">{{ region_to_flag(item.metadata.country_code) }} {{ item.metadata.country_code }}</span>{% endif %}
+                                {% if item.metadata.get('city') %}<span class="sep">·</span> {{ item.metadata.city }}{% endif %}
+                            </span>
+                            {% endif %}
+                            {% if type == 'domain' and item.metadata.get('registrar') %}
+                            <span class="enrich-data">{{ item.metadata.registrar }}{% if item.metadata.get('creation_date') %}<span class="sep">·</span> {{ item.metadata.creation_date[:4] }}{% endif %}</span>
+                            {% endif %}
+
+                            {# ── CORRELAZIONE (prima dei tag) ── #}
+                            {% if item.metadata.get('derived_source') %}
+                            <span class="flag-tag badge-derived"
+                                  data-wiki-title="Dominio correlato"
+                                  data-wiki-body="Questo dominio non era scritto come tale nel testo: è stato ricavato per correlazione dall'{{ 'URL' if item.metadata.derived_source == 'url' else 'email' }} di origine{% if item.derived_from %} ({{ item.derived_from }}){% endif %}. Serve a pivotare l'indagine (WHOIS, altre osservazioni)."
+                                  role="button" tabindex="0">&#8627; da {{ item.metadata.derived_source }}</span>
+                            {% endif %}
+
+                            {# ── TAG: accuratezza + flag, separati dalle info ── #}
+                            <span class="entity-tags">
+                            {# WHOIS non trovato (dominio senza registrar dopo l'enrich) #}
+                            {% if type == 'domain' and not item.metadata.get('registrar') %}
+                            <span class="flag-tag badge-whois-missing"
+                                  data-wiki-title="WHOIS non trovato"
+                                  data-wiki-body="Nessun dato WHOIS/RDAP per questo dominio: spesso significa che NON è registrato (NXDOMAIN / 404 su RDAP), oppure il TLD non espone RDAP. Da verificare manualmente."
+                                  role="button" tabindex="0">&#33; whois</span>
+                            {% endif %}
+
+                            {# IP non instradabile: mostra il tipo reale (private/loopback/reserved) + spiegazione interna #}
+                            {% if item.metadata.get('bogon') %}
+                            <span class="badge-bogon flag-tag"
+                                  data-wiki-title="IP non instradabile · {{ item.metadata.bogon_type }}"
+                                  data-wiki-body="{% if item.metadata.bogon_type == 'private' %}Indirizzo di rete privata (RFC 1918: 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16). Usato nelle LAN, non raggiungibile da Internet: non ha geolocalizzazione pubblica e non identifica un host esterno.{% elif item.metadata.bogon_type == 'loopback' %}Indirizzo di loopback (127.0.0.0/8): si riferisce alla macchina stessa, non esce mai dall'host.{% else %}Indirizzo riservato/special-use (es. 0.0.0.0/8, 169.254.0.0/16 link-local, 100.64.0.0/10 CGNAT). Non instradabile su Internet pubblico.{% endif %} In un'indagine: di norma rumore o riferimento interno, non un target esterno."
+                                  role="button" tabindex="0">{{ item.metadata.bogon_type }}</span>
+                            {% endif %}
+
+                            {# CVE: spiegazione interna #}
+                            {% if type == 'cve' %}
+                            <span class="flag-tag"
+                                  data-wiki-title="CVE — Common Vulnerabilities and Exposures"
+                                  data-wiki-body="Identificatore standard di una vulnerabilità nota (formato CVE-ANNO-NUMERO). Catalogato pubblicamente; va correlato a prodotto/versione colpita e alla disponibilità di patch. La sola presenza del codice non implica che il sistema osservato sia vulnerabile."
+                                  role="button" tabindex="0">CVE</span>
+                            {% endif %}
+
+                            {# Phone: regione/carrier label #}
+                            {% if type == "phone" and item.metadata.get("region") %}
+                            <span class="phone-flag" title="{{ item.metadata.region }}">{{ region_to_label(item.metadata.region) }}</span>
+                            {% endif %}
+
+                            {# LLM badge — con definizione (wiki popover) #}
+                            {% if item.metadata.get('extractor') == 'llm' %}
+                            <span class="flag-tag badge-llm"
+                                  data-wiki-title="Estratto da LLM"
+                                  data-wiki-body="Entità individuata dal modello linguistico locale (non da regex/spaCy). Utile per organizzazioni/indirizzi e contesto, ma da verificare: il modello può inferire o sbagliare. Confidenza di base: bassa."
+                                  role="button" tabindex="0">LLM</span>
+                            {% endif %}
+
+                            {# TLD sospetto — sempre visibile in entity-row #}
+                            {% if item.metadata.get("suspicious_tld") %}
+                            <span class="flag-tag flag-suspicious-tld"
+                                  data-wiki-title="TLD Sospetto"
+                                  data-wiki-body="Questa estensione di primo livello (.xyz, .tk, .ml...) e frequentemente associata a campagne di phishing, malware e spam per il basso costo di registrazione. Non indica certezza di maliciousness: va trattato come segnale di allerta da correlare con altri indicatori."
+                                  role="button"
+                                  tabindex="0">&#9888; tld</span>
+                            {% endif %}
+
+                            {# Rischio + pivot: dopo i tag generici sopra, prima dell'affidabilità sotto. #}
+                            {% set _risk = (risk_by_value.get(item.value) if risk_by_value else none) %}
+                            {% set _rep = item.metadata.get('reputation') %}
+                            {% set _rep_hit = (_rep and _rep.get('malicious')) %}
+                            {# Bogon azzera sempre il punteggio numerico (non è un target esterno
+                               attaccabile), ma un match reputation resta un segnale da mostrare
+                               comunque: fallback a 'critico' (coerente col peso reputation_malicious
+                               che da solo satura quella soglia quando il bogon non lo azzera). #}
+                            {% set _level = (_risk.level if (_risk and _risk.level and _risk.level != 'basso') else ('critico' if _rep_hit else none)) %}
+                            {% if _level %}
+                            <span class="risk-letter risk-letter-{{ _level }}"
+                                  data-wiki-title="{{ 'Rischio: MALEVOLO' if _level == 'critico' else 'Rischio: SOSPETTO' }}"
+                                  data-wiki-body="{{ _risk_tooltip_body(_risk, _rep) }}"
+                                  role="button" tabindex="0">{% if _level == 'critico' %}&#9888; MALEVOLO{% else %}&#9651; SOSPETTO{% endif %}</span>
+                            {% endif %}
+                            {% set _pv = (pivot_counts.get(item.value, 0) if pivot_counts else 0) %}
+                            {% if _pv >= 2 %}
+                            <a class="pivot-badge" href="/e/cross/{{ item.value | urlencode }}"
+                               title="Visto in {{ _pv }} osservazioni — pivota">&#8644; PIVOT {{ _pv }}</a>
+                            {% endif %}
+
+                            {# Affidabilità per ultima: prima i tag generici sopra e rischio/pivot,
+                               infine questa — vedi STATUS.md per il principio di ordinamento.
+                               4° livello CRITICAL: derivato a display-time, mai stored su
+                               Entity.confidence. Richiede confidence high E corroborazione da 2+
+                               fonti reputation indipendenti. #}
+                            {% set _rep_for_conf = item.metadata.get('reputation') %}
+                            {% set _rep_corroborated = (_rep_for_conf and _rep_for_conf.get('malicious') and (_rep_for_conf.get('sources', []) | length) >= 2) %}
+                            {% set _conf_tier = ('critical' if (item.confidence == 'high' and _rep_corroborated) else item.confidence) %}
+                            {% if _conf_tier == 'critical' %}
+                            <span class="conf-badge conf-critical" role="button" tabindex="0"
+                                  data-wiki-title="Affidabilità: CRITICAL"
+                                  data-wiki-body="{{ _conf_tooltip_body('critical') }}">CRITICAL</span>
+                            {% elif _conf_tier == 'high' %}
+                            <span class="conf-badge conf-high" role="button" tabindex="0"
+                                  data-wiki-title="Affidabilità: HIGH (~90%)"
+                                  data-wiki-body="{{ _conf_tooltip_body('high') }}">HIGH</span>
+                            {% elif _conf_tier == 'low' %}
+                            <span class="conf-badge conf-low" role="button" tabindex="0"
+                                  data-wiki-title="Affidabilità: LOW (~35%)"
+                                  data-wiki-body="{{ _conf_tooltip_body('low') }}">LOW</span>
+                            {% else %}
+                            <span class="conf-badge conf-medium" role="button" tabindex="0"
+                                  data-wiki-title="Affidabilità: MEDIUM (~65%)"
+                                  data-wiki-body="{{ _conf_tooltip_body('medium') }}">MEDIUM</span>
+                            {% endif %}
+                            </span>
+
+                        </div>
+                    </div>
+
+                    {# ── Pannello espandibile: 2 colonne (tool | AI) + splitter ── #}
+                    <div class="entity-panel">
+                        <div class="panel-main-content">
+                            {# ── Colonna sinistra: info dei tool del singolo IOC ── #}
+                            <div class="panel-col-tools">
+                            {# Per IP privati/bogon: info di rete locale, resta un blocco a sé (non è
+                               una fonte esterna, nessun link/dato da interrogare per un IP non
+                               instradabile). #}
+                            {% set _priv_info = (private_ip_info.get(item.value) if (private_ip_info and type == 'ipv4') else none) %}
+                            {% if _priv_info %}
+                            <div class="catalog-wrapper">
+                                <div class="catalog-section-title">&#9656; Rete privata</div>
+                                <dl class="kv-grid">
+                                    <dt>range</dt><dd>{{ _priv_info.range_name }}</dd>
+                                    {% if _priv_info.legacy_class %}<dt>classe</dt><dd>Classe {{ _priv_info.legacy_class }} (storica)</dd>{% endif %}
+                                </dl>
+                            </div>
+                            {% endif %}
+                            {# (2) Fonti — automatiche (estrattore/geo/RDAP/WHOIS/reputation) e risorse
+                               esterne del catalogo OSINT (link + lookup live), raggruppate in categorie
+                               con intestazione (Estrazione/Whois & Rete/Reputation/Database/Browser).
+                               Numerazione #N continua attraverso tutti i gruppi (rank: contatore
+                               dinamico, non ranghi fissi per tipo — fragile, un tipo con meno fonti
+                               automatiche prima "saltava" un numero). Le risorse "solo link" (nessun
+                               lookup live, un person_name può averne 15+: motori di ricerca, dork,
+                               reverse image...) sono raggruppate in UN SOLO #N "Link" nella categoria
+                               Browser, invece di affollare la lista con un #N ciascuna — le risorse
+                               live/a-chiave restano invece ciascuna col proprio #N, in evidenza. #}
+                            <div class="sources-wrapper">
+                                <div class="sources-list">
+                                    {% set _rank = namespace(n=0) %}
+                                    {% set _live_ids = (live_resource_ids if live_resource_ids is not none else ('site-crtsh', 'site-nvd-nist', 'site-urlscan-domain', 'site-urlscan-url', 'site-urlscan-ip', 'site-bgp-he-net', 'site-shodan', 'site-gravatar', 'site-xposedornot', 'site-phone-info')) %}
+                                    {% set _reputation_resource_ids = ['site-abuseipdb', 'site-virustotal-search', 'site-malwarebazaar-hash', 'site-threatfox', 'site-urlhaus', 'site-otx'] %}
+                                    {% set _database_resource_ids = ['site-crtsh', 'site-nvd-nist', 'site-mitre-cve', 'site-urlscan-domain', 'site-urlscan-url', 'site-urlscan-ip', 'site-bgp-he-net', 'site-shodan'] %}
+                                    {% set _identity_resource_ids = ['site-gravatar', 'site-xposedornot', 'site-phone-info', 'site-hunter-verify', 'site-cf', 'site-emailrep', 'site-hudsonrock-email', 'site-hudsonrock-username', 'site-github-api', 'site-keybase-api', 'site-gitlab-api', 'site-reddit-api', 'site-ipqs-email', 'site-ipqs-phone', 'site-numverify'] %}
+                                    {% set _dork_resource_ids = ['site-dorks-email', 'site-dorks-person', 'site-dorks-username', 'site-dorks-social', 'site-dorks-phone', 'site-dorks-domain', 'site-dorks-ipv4'] %}
+                                    {% set _ondemand_resource_ids = ['site-whatsmyname', 'site-holehe'] %}
+                                    {# Risorse del catalogo: solo per IP pubblici (per i privati c'è "Rete
+                                       privata" sopra, niente da interrogare esternamente). Priorità alle
+                                       fonti live/dirette-in-POE: una risorsa Reputation/Database SENZA
+                                       lookup live (es. MalwareBazaar, MITRE — solo link) finisce nel
+                                       bundle Browser insieme a tutto il resto, non nella sua categoria
+                                       semantica con un #N proprio — "lavora direttamente su POE" è il
+                                       criterio che decide la categoria, non il tema della risorsa. #}
+                                    {% set _resources = (catalog_resources.get(item.value, []) if (catalog_resources and not _priv_info) else []) %}
+                                    {% set _rep_resources = _resources | selectattr('id', 'in', _reputation_resource_ids) | selectattr('id', 'in', _live_ids) | list %}
+                                    {% set _db_resources = _resources | selectattr('id', 'in', _database_resource_ids) | selectattr('id', 'in', _live_ids) | list %}
+                                    {% set _identity_resources = _resources | selectattr('id', 'in', _identity_resource_ids) | selectattr('id', 'in', _live_ids) | list %}
+                                    {% set _dork_resources = _resources | selectattr('id', 'in', _dork_resource_ids) | selectattr('id', 'in', _live_ids) | list %}
+                                    {% set _ondemand_resources = _resources | selectattr('id', 'in', _ondemand_resource_ids) | selectattr('id', 'in', _live_ids) | list %}
+                                    {% set _browser_resources = _resources | rejectattr('id', 'in', _live_ids) | list %}
+
+                                    {# ── Estrazione: sempre presente — come POE ha riconosciuto questo IOC ── #}
+                                    <div class="source-category">
+                                        <div class="source-category-title">&#9656; Estrazione</div>
+                                        {% set _rank.n = _rank.n + 1 %}
+                                        {{ source_block(_rank.n,
+                                            (llm_label() if item.metadata.get('extractor') == 'llm'
+                                             else ('spaCy NER' if item.metadata.get('extractor') == 'spacy' else 'regex_extractor')),
+                                            'tool', 'tool',
+                                            [('tipo', type), ('valore', item.value), ('confidenza', item.confidence),
+                                             ('originale', item.original if (item.original and item.original != item.value) else none),
+                                             ('estrattore', item.metadata.get('extractor'))]) }}
+                                    </div>
+
+                                    {# ── Whois & Rete: geo/RDAP/WHOIS — chi possiede/gestisce l'infrastruttura ── #}
+                                    {% set _has_geo = (type == 'ipv4' and item.metadata.get('country')) %}
+                                    {% set _has_ip_rdap = (type == 'ipv4' and (item.metadata.get('rdap_name') or item.metadata.get('rdap_country') or item.metadata.get('rdap_cidr'))) %}
+                                    {% set _has_domain_whois = (type == 'domain' and item.metadata.get('registrar')) %}
+                                    {% if _has_geo or _has_ip_rdap or _has_domain_whois %}
+                                    <div class="source-category">
+                                        <div class="source-category-title">&#9656; Whois &amp; Rete</div>
+                                        {% if _has_geo %}
+                                        {% set _rank.n = _rank.n + 1 %}
+                                        {{ source_block(_rank.n, 'ip-api.com', 'api', 'api',
+                                            [('paese', item.metadata.get('country')), ('città', item.metadata.get('city')),
+                                             ('ISP', item.metadata.get('isp')), ('org', item.metadata.get('org'))]) }}
+                                        {% endif %}
+                                        {% if _has_ip_rdap %}
+                                        {% set _rank.n = _rank.n + 1 %}
+                                        {{ source_block(_rank.n, 'RDAP', 'api', 'rdap',
+                                            [('rete', item.metadata.get('rdap_name')), ('paese', item.metadata.get('rdap_country')),
+                                             ('CIDR', item.metadata.get('rdap_cidr')), ('org', item.metadata.get('rdap_org')),
+                                             ('abuse', item.metadata.get('rdap_abuse')),
+                                             ('abuse (RIPEstat)', item.metadata.get('ripe_abuse_contacts'))]) }}
+                                        {% endif %}
+                                        {% if _has_domain_whois %}
+                                        {% set _rank.n = _rank.n + 1 %}
+                                        {{ source_block(_rank.n, 'RDAP / WHOIS', 'api', 'rdap',
+                                            [('registrar', item.metadata.get('registrar')), ('creato', item.metadata.get('creation_date')),
+                                             ('scade', item.metadata.get('expiration_date')), ('aggiornato', item.metadata.get('updated_date')),
+                                             ('org', item.metadata.get('registrant_org')), ('paese', item.metadata.get('registrant_country')),
+                                             ('status', item.metadata.get('status')), ('DNSSEC', item.metadata.get('dnssec'))]) }}
+                                        {% endif %}
+                                    </div>
+                                    {% endif %}
+
+                                    {# ── Reputation: verdetti di malevolenza — feed locali + risorse a chiave.
+                                       Un source_block PER FONTE feed (non aggregato): ogni fonte ha il suo
+                                       riferimento cliccabile e la sua data. Fallback ai campi aggregati per
+                                       entità arricchite prima dell'introduzione di 'hits'. ── #}
+                                    {% set _has_rep_feed = item.metadata.get('reputation') and item.metadata.reputation.get('malicious') %}
+                                    {% if _has_rep_feed or _rep_resources %}
+                                    <div class="source-category">
+                                        <div class="source-category-title">&#9656; Reputation</div>
+                                        {% if _has_rep_feed %}
+                                        {% set _rep = item.metadata.reputation %}
+                                        {% set _hits = _rep.get('hits', []) %}
+                                        {% if _hits %}
+                                        {% for hit in _hits %}
+                                        {% set _rank.n = _rank.n + 1 %}
+                                        {{ source_block(_rank.n, 'Reputation: ' ~ hit.source, 'osint', 'reputation',
+                                            [('minaccia', hit.get('threat')),
+                                             ('aggiornato', hit.get('updated_at')[:10] if hit.get('updated_at') else none)],
+                                            link=('riferimento', hit.get('reference'))) }}
+                                        {% endfor %}
+                                        {% else %}
+                                        {% set _rank.n = _rank.n + 1 %}
+                                        {{ source_block(_rank.n, 'Reputation feed', 'osint', 'reputation',
+                                            [('fonti', _rep.get('sources', []) | join(', ')),
+                                             ('minaccia', _rep.get('threat')),
+                                             ('aggiornato', _rep.get('updated_at')[:10] if _rep.get('updated_at') else none)],
+                                            link=('riferimento', _rep.get('reference'))) }}
+                                        {% endif %}
+                                        {% endif %}
+                                        {% for res in _rep_resources %}
+                                        {# _rep_resources contiene solo id già in _live_ids (vedi sopra):
+                                           qui è sempre un lookup live, mai un link semplice. #}
+                                        {% set _rank.n = _rank.n + 1 %}
+                                        <div class="source-group expanded live-lookup-result" data-auto-lookup
+                                             data-lookup-url="/e/{{ observation_id }}/lookup/{{ res.id }}/{{ item.value | urlencode }}?rank={{ _rank.n }}">
+                                            <div class="source-header">
+                                                <span class="source-name"><span class="source-rank">#{{ _rank.n }}</span>{{ res.name }}</span>
+                                                <div class="source-meta"><span class="source-tag api">live</span></div>
+                                            </div>
+                                            <div class="source-body"><span class="live-lookup-loading">Verifica in corso…</span></div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+
+                                    {# ── Database: log/registri strutturati pubblici — fatti, non verdetti ── #}
+                                    {% if _db_resources %}
+                                    <div class="source-category">
+                                        <div class="source-category-title">&#9656; Database</div>
+                                        {% for res in _db_resources %}
+                                        {# _db_resources contiene solo id già in _live_ids (vedi sopra). #}
+                                        {% set _rank.n = _rank.n + 1 %}
+                                        <div class="source-group expanded live-lookup-result" data-auto-lookup
+                                             data-lookup-url="/e/{{ observation_id }}/lookup/{{ res.id }}/{{ item.value | urlencode }}?rank={{ _rank.n }}">
+                                            <div class="source-header">
+                                                <span class="source-name"><span class="source-rank">#{{ _rank.n }}</span>{{ res.name }}</span>
+                                                <div class="source-meta"><span class="source-tag api">live</span></div>
+                                            </div>
+                                            <div class="source-body"><span class="live-lookup-loading">Verifica in corso…</span></div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+
+                                    {# ── Identità: persone/email/telefono — profili pubblici, breach, dati numero ── #}
+                                    {% if _identity_resources %}
+                                    <div class="source-category">
+                                        <div class="source-category-title">&#9656; Identità</div>
+                                        {% for res in _identity_resources %}
+                                        {% set _rank.n = _rank.n + 1 %}
+                                        <div class="source-group expanded live-lookup-result" data-auto-lookup
+                                             data-lookup-url="/e/{{ observation_id }}/lookup/{{ res.id }}/{{ item.value | urlencode }}?rank={{ _rank.n }}">
+                                            <div class="source-header">
+                                                <span class="source-name"><span class="source-rank">#{{ _rank.n }}</span>{{ res.name }}</span>
+                                                <div class="source-meta"><span class="source-tag api">live</span></div>
+                                            </div>
+                                            <div class="source-body"><span class="live-lookup-loading">Verifica in corso…</span></div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+
+                                    {# ── Ricerca approfondita: lookup ON-DEMAND (bottone "Verifica",
+                                       NON auto-fire come tutto il resto — troppo lente/invasive per
+                                       partire da sole all'espansione della card). Niente
+                                       data-auto-lookup: il click sul bottone chiama fireAutoLookup
+                                       via il branch .btn-manual-lookup in app.js. Copre più tipi di
+                                       entità (username: WhatsMyName; email: Holehe). ── #}
+                                    {% if _ondemand_resources %}
+                                    <div class="source-category">
+                                        <div class="source-category-title">&#9656; Ricerca approfondita</div>
+                                        {% for res in _ondemand_resources %}
+                                        {% set _rank.n = _rank.n + 1 %}
+                                        <div class="source-group live-lookup-result"
+                                             data-lookup-url="/e/{{ observation_id }}/lookup/{{ res.id }}/{{ item.value | urlencode }}?rank={{ _rank.n }}">
+                                            <div class="source-header">
+                                                <span class="source-name"><span class="source-rank">#{{ _rank.n }}</span>{{ res.name }}</span>
+                                                <div class="source-meta">
+                                                    <span class="source-tag api">on-demand</span>
+                                                    <button type="button" class="btn-raw btn-manual-lookup">Verifica</button>
+                                                </div>
+                                            </div>
+                                            <div class="source-body"></div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+
+                                    {# ── Ricerca mirata: Google Dork generati in locale (query+URL, nessuna
+                                       rete). Ogni risorsa è un lookup live che restituisce link Google
+                                       pronti; per persone/email/username/telefono/dominio/IP. ── #}
+                                    {% if _dork_resources %}
+                                    <div class="source-category">
+                                        <div class="source-category-title">&#9656; Ricerca mirata</div>
+                                        {% for res in _dork_resources %}
+                                        {% set _rank.n = _rank.n + 1 %}
+                                        <div class="source-group expanded live-lookup-result" data-auto-lookup
+                                             data-lookup-url="/e/{{ observation_id }}/lookup/{{ res.id }}/{{ item.value | urlencode }}?rank={{ _rank.n }}">
+                                            <div class="source-header">
+                                                <span class="source-name"><span class="source-rank">#{{ _rank.n }}</span>{{ res.name }}</span>
+                                                <div class="source-meta"><span class="source-tag api">live</span></div>
+                                            </div>
+                                            <div class="source-body"><span class="live-lookup-loading">Verifica in corso…</span></div>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+                                    {% endif %}
+
+                                    {# ── Browser: risorse senza lookup diretto in POE, solo un link da
+                                       aprire — raggruppate in un solo #N (link_bundle_block). ── #}
+                                    {% if _browser_resources %}
+                                    <div class="source-category">
+                                        <div class="source-category-title">&#9656; Browser</div>
+                                        {% set _rank.n = _rank.n + 1 %}
+                                        {{ link_bundle_block(_rank.n, _browser_resources, item.value) }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+
+                                {# Azioni: copia + elimina #}
+                                <div class="panel-actions">
+                                    {% if item.original and item.original != item.value %}
+                                    <span class="original-form" title="Forma originale">&#8592; {{ item.original }}</span>
+                                    {% else %}
+                                    <span></span>
+                                    {% endif %}
+
+                                    <div style="display:flex;gap:0.5rem;align-items:center;">
+                                        <button type="button"
+                                                class="copy-btn"
+                                                data-copy-value="{{ item.value }}"
+                                                title="Copia negli appunti"
+                                                aria-label="Copia {{ item.value }}">&#x29C9; <span class="copy-label">copia</span></button>
+
+                                        <button type="button" class="entity-delete-btn"
+                                                hx-post="/e/{{ observation_id }}/remove-entity"
+                                                hx-vals='{{ {"entity_type": type, "entity_value": item.value} | tojson }}'
+                                                hx-target="closest .entity-card"
+                                                hx-swap="delete"
+                                                hx-confirm="Rimuovere questa entità dall'osservazione?"
+                                                title="Rimuovi questa entità"
+                                                aria-label="Rimuovi {{ item.value }}">&#x2715; <span class="del-label">elimina</span></button>
+                                    </div>
+                                </div>
+
+                                </div>
+                            </div>
+
+                            {# ── Linea centrale trascinabile ── #}
+                            <div class="panel-splitter"
+                                 role="separator"
+                                 aria-orientation="vertical"
+                                 tabindex="0"
+                                 aria-label="Ridimensiona pannelli"></div>
+
+                            {# ── Colonna destra: Analisi AI per-entità (lazy al primo expand) ── #}
+                            <div class="panel-col-ai">
+                                <div class="ai-wrapper">
+                                    <div class="ai-section-title">&#9656; Analisi AI</div>
+                                    <div class="ai-analysis-content"
+                                         data-auto-ai
+                                         data-ai-url="/e/{{ observation_id }}/entity-ai"
+                                         data-entity-type="{{ type }}"
+                                         data-entity-value="{{ item.value }}">
+                                        <span class="ai-loading">Espandi per generare l'analisi…</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p class="no-entities">Nessuna entità OSINT rilevata nel testo.</p>
+    {% endif %}
+</article>
+{% endmacro %}
+
+
+{% macro render_kept_toggle(observation_id, is_kept) %}
+<span id="kept-toggle-{{ observation_id }}">
+    <form hx-post="/e/{{ observation_id }}/keep"
+          hx-target="#kept-toggle-{{ observation_id }}"
+          hx-swap="outerHTML">
+        <input type="hidden" name="kept" value="{{ '0' if is_kept else '1' }}">
+        <button type="submit"
+                class="kept-btn {% if is_kept %}kept-active{% endif %}"
+                aria-pressed="{{ 'true' if is_kept else 'false' }}"
+                title="{{ 'Nei Preferiti — clicca per togliere' if is_kept else 'Aggiungi ai Preferiti' }}"
+                aria-label="{{ 'Rimuovi dai Preferiti' if is_kept else 'Aggiungi ai Preferiti' }}">
+            {% if is_kept %}&#9733; Preferiti{% else %}&#9734;{% endif %}
+        </button>
+    </form>
+</span>
+{% endmacro %}
+
+
+{# source_block — riquadro di una fonte (estrattore/enricher): vista formattata
+   (kv-grid) di default, il tasto "raw" mostra lo stesso dato come testo grezzo.
+   pairs = lista di (label, valore); i valori None/vuoti sono saltati. #}
+{% macro source_block(rank, name, tag_cls, tag_label, pairs, link=none) %}
+<div class="source-group">
+    <div class="source-header">
+        <span class="source-name"><span class="source-rank">#{{ rank }}</span>{{ name }}</span>
+        <div class="source-meta">
+            <span class="source-tag {{ tag_cls }}">{{ tag_label }}</span>
+            <button type="button" class="btn-raw">raw</button>
+        </div>
+    </div>
+    <div class="source-body">
+        <dl class="kv-grid">
+            {% for k, v in pairs %}{% if v %}<dt>{{ k }}</dt><dd>{{ v }}</dd>{% endif %}{% endfor %}
+            {% if link and link[1] %}<dt>{{ link[0] }}</dt><dd><a href="{{ link[1] }}" target="_blank" rel="noopener noreferrer">{{ link[1] }}</a></dd>{% endif %}
+        </dl>
+        <pre class="source-raw-data">{% for k, v in pairs %}{% if v %}{{ k }}: {{ v }}
+{% endif %}{% endfor %}{% if link and link[1] %}{{ link[0] }}: {{ link[1] }}
+{% endif %}</pre>
+    </div>
+</div>
+{% endmacro %}
+
+{# Un solo #N per TUTTE le risorse "solo link" (categoria Browser) — invece
+   di un source_block per ciascuna. Un person_name può avere 15+ risorse di
+   solo browsing (motori di ricerca, dork, reverse image...): raggrupparle
+   evita di affollare la lista di #N che non fanno nulla di diverso da "apri
+   questo URL". Stessa forma visiva/stesso toggle raw di source_block. #}
+{% macro link_bundle_block(rank, resources, entity_value) %}
+<div class="source-group">
+    <div class="source-header">
+        <span class="source-name"><span class="source-rank">#{{ rank }}</span>Link</span>
+        <div class="source-meta">
+            <span class="source-tag website">{{ resources | length }}</span>
+            <button type="button" class="btn-raw">raw</button>
+        </div>
+    </div>
+    <div class="source-body">
+        <dl class="kv-grid link-bundle-grid">
+            {% for res in resources %}
+            {% set _rurl = resource_url(res, entity_value) %}
+            {% if _rurl %}<dt>{{ res.name }}</dt><dd><a href="{{ _rurl }}" target="_blank" rel="noopener noreferrer">{{ _rurl }}</a></dd>{% endif %}
+            {% endfor %}
+        </dl>
+        <pre class="source-raw-data">{% for res in resources %}{% set _rurl = resource_url(res, entity_value) %}{% if _rurl %}{{ res.name }}: {{ _rurl }}
+{% endif %}{% endfor %}</pre>
+    </div>
+</div>
+{% endmacro %}
+
+
+{# render_synthesis — pannello "Sintesi Intelligence". Mostrato SOLO con più di
+   un IOC (total > 1): con un solo indicatore l'Analisi AI per-entità basta, una
+   sintesi che correla più entità non ha senso su una sola. Riusato sia in
+   detail.html (osservazione salvata) sia in results.html (anteprima "Osserva":
+   l'osservazione è già persistita, observation_id è reale e la route
+   /e/{id}/synthesis funziona). id="synthesis-panel" è l'hx-target della route. #}
+{% macro render_synthesis(observation_id, total, synthesis_text=none, synthesis_model=none) %}
+{% if total and total > 1 %}
+<section id="synthesis-panel" style="margin-top:var(--sp-xl);">
+  {% if synthesis_text %}
+    <div class="synthesis-panel-v5">
+      <div class="synthesis-header">
+        <span class="synthesis-title">&#9656; Sintesi Intelligence</span>
+        <span class="synthesis-model">{{ synthesis_model or 'llm' }}</span>
+      </div>
+      <div class="synthesis-body">{{ format_synthesis(synthesis_text)|safe }}</div>
+    </div>
+  {% else %}
+    <div style="display:flex;align-items:center;gap:var(--sp-md);">
+      <button
+        hx-post="/e/{{ observation_id }}/synthesis"
+        hx-target="#synthesis-panel"
+        hx-swap="outerHTML"
+        hx-indicator="#synth-spinner"
+        style="background:transparent;color:var(--color-accent-primary);border:1px solid var(--color-border-strong);padding:0.4rem 0.9rem;font-family:var(--font-mono);font-size:0.78rem;border-radius:var(--radius-sm);cursor:pointer;">
+        &#9656; Genera sintesi investigativa
+      </button>
+      <span id="synth-spinner" class="htmx-indicator" style="font-family:var(--font-mono);font-size:0.78rem;"> &#8635; Generazione...</span>
+    </div>
+  {% endif %}
+</section>
+{% endif %}
+{% endmacro %}
